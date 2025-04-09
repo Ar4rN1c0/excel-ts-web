@@ -1,4 +1,3 @@
-// dummy-generator.js
 import ExcelJS from 'exceljs';
 
 async function generarDummyInput() {
@@ -18,8 +17,10 @@ async function generarDummyInput() {
   configSheet.addRow(['Nº de Jueces para la presentación verbal', 2]);
   configSheet.addRow(['Nº de personal para el registro', 2]);
   configSheet.addRow(['Nº de carreras clasificatorias', 3]);
+  // Se agrega el parámetro "Tiempo Eliminatorias" para definir la duración del bloque de reserva.
+  configSheet.addRow(['Tiempo Eliminatorias', 20]);
   configSheet.addRow(['Nº de equipos que se clasifican', 4]);
-  // Modificado: Guardar la fecha como objeto Date en vez de una cadena
+  // Guardar la fecha como objeto Date en lugar de una cadena
   configSheet.addRow(['Fecha de inicio', new Date(2025, 4, 1, 9, 0, 0)]);
 
   // Hoja "Equipos" con datos dummy

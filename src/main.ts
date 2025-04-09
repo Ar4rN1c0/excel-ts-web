@@ -1,8 +1,8 @@
 import './style.css';
 import * as XLSX from 'xlsx';
 import { processInputData } from './excel';
-import { generarExcelEquipo, generarExcelMaster } from './output';
-import { Equipo, asignarHorarios } from './timetable';
+import { generarExcelEquipo, generarExcelMaster, generarExcelMasterJueces } from './output';
+import { Equipo, asignarHorarios, asignarHorariosJueces, Juez } from './timetable';
 
 document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -15,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     reader.onload = (e: ProgressEvent<FileReader>) => {
       const data = new Uint8Array(e.target?.result as ArrayBuffer);
-      // Lectura del workbook; se puede agregar cellDates: true en el sheet_to_json
       const workbook = XLSX.read(data, { type: 'array' });
       
       // Obtener las hojas "Configuración" y "Equipos"
@@ -30,28 +29,27 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       
-      // Convertir las hojas a arrays incluyendo cellDates: true
+      // Convertir hojas a arrays (con cellDates activado)
       const configData = XLSX.utils.sheet_to_json(configSheet, { header: 1, cellDates: true } as any);
       const equiposData = XLSX.utils.sheet_to_json(equiposSheet, { header: 1, cellDates: true } as any);
-      
+
       const { config, equipos } = processInputData(configData, equiposData) as { config: any, equipos: Equipo[] };
 
-      // Debug de "Fecha de inicio"
-      console.log("Fecha de inicio (antes de asignarHorarios):", config['Fecha de inicio'], typeof config['Fecha de inicio']);
-
-      // Convertir a Date si es necesario
+      // Convertir "Fecha de inicio" a Date, en caso de ser necesario
       const fechaInicio = config['Fecha de inicio'] instanceof Date 
         ? config['Fecha de inicio'] 
         : new Date(config['Fecha de inicio']);
 
-      console.log("fechaInicio valid:", fechaInicio instanceof Date && !isNaN(fechaInicio.getTime()));
-      
+      // Asignar horarios a equipos (con eventos globales y locales)
       asignarHorarios(equipos, config, fechaInicio);
-      
+
+      // Asignar horarios a jueces usando la hora global de inicio de evaluaciones (guardada en config.globalEvalStart)
+      const jueces: Juez[] = asignarHorariosJueces(equipos, config, config.globalEvalStart);
+
       if (appDiv) {
         appDiv.innerHTML = '';
 
-        // Botón para descargar Horario Maestro
+        // Botón para descargar el Horario Maestro de equipos
         const btnMaster = document.createElement('button');
         btnMaster.textContent = "Descargar Horario Maestro";
         btnMaster.addEventListener('click', () => {
@@ -59,7 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         appDiv.appendChild(btnMaster);
 
-        // Botones para cada equipo
+        // Sección de botones para cada equipo
         const teamContainer = document.createElement('div');
         teamContainer.id = 'team-buttons';
         equipos.forEach((equipo) => {
@@ -71,6 +69,14 @@ document.addEventListener('DOMContentLoaded', () => {
           teamContainer.appendChild(btn);
         });
         appDiv.appendChild(teamContainer);
+
+        // Botón para descargar el horario maestro para todos los jueces
+        const btnJuecesMaster = document.createElement('button');
+        btnJuecesMaster.textContent = "Descargar Horario Jueces";
+        btnJuecesMaster.addEventListener('click', () => {
+          generarExcelMasterJueces(jueces);
+        });
+        appDiv.appendChild(btnJuecesMaster);
       }
     };
 
