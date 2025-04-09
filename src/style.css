@@ -1,0 +1,62 @@
+/* style.css */
+
+/* Variables de colores para facilitar modificaciones */
+:root {
+    --primary-color: #007BFF;
+    --primary-hover: #0069d9;
+    --secondary-color: #6C757D;
+    --background-color: #F8F9FA;
+    --text-color: #343A40;
+  }
+  
+  /* Estilo global para el body */
+  body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+  }
+  
+  /* Contenedor principal */
+  #app {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: #FFF;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  }
+  
+  /* Estilo para el input de archivo */
+  input[type="file"] {
+    display: block;
+    margin-bottom: 20px;
+  }
+  
+  /* Botones */
+  button {
+    display: inline-block;
+    padding: 10px 20px;
+    font-size: 1rem;
+    color: #FFF;
+    background-color: var(--primary-color);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    margin: 5px;
+    transition: background-color 0.3s ease;
+  }
+  
+  button:hover {
+    background-color: var(--primary-hover);
+  }
+  
+  /* Contenedor de botones por equipo */
+  #team-buttons {
+    margin-top: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
