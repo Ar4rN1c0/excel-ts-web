@@ -1,3 +1,5 @@
+// main.ts
+
 import './style.css';
 import * as XLSX from 'xlsx';
 import { processInputData } from './excel';

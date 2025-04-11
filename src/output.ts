@@ -1,3 +1,5 @@
+// output.ts
+
 import ExcelJS from 'exceljs';
 import { Equipo, Juez } from './timetable';
 
