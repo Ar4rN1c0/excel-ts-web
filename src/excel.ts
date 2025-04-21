@@ -1,83 +1,80 @@
-// excel.ts
+// src/excel.ts
 import * as XLSX from 'xlsx';
-
-export function handleFileUpload(event: Event) {
-  const input = event.target as HTMLInputElement;
-  if (!input.files || input.files.length === 0) return;
-  const file = input.files[0];
-  const reader = new FileReader();
-
-  reader.onload = (e) => {
-    const data = new Uint8Array(e.target?.result as ArrayBuffer);
-    const workbook = XLSX.read(data, { type: 'array' });
-
-    // Se buscan las hojas "Configuración" y "Equipos"
-    const configSheet = workbook.Sheets["Configuración"];
-    const equiposSheet = workbook.Sheets["Equipos"];
-
-    if (!configSheet || !equiposSheet) {
-      console.error("El archivo Excel debe contener las hojas 'Configuración' y 'Equipos'.");
-      return;
-    }
-
-    const configData = XLSX.utils.sheet_to_json(configSheet, { header: 1, cellDates: true } as any);
-    const equiposData = XLSX.utils.sheet_to_json(equiposSheet, { header: 1, cellDates: true } as any);
-
-    console.log("Datos de Configuración:", configData);
-    console.log("Datos de Equipos:", equiposData);
-
-    const parsedData = processInputData(configData, equiposData);
-    console.log("Datos procesados:", parsedData);
-  };
-
-  reader.readAsArrayBuffer(file);
-}
 
 function excelDateToJSDate(serial: number): Date {
   return new Date((serial - 25569) * 86400 * 1000);
 }
 
-export function processInputData(configData: any[], equiposData: any[]) {
-  // Procesar la hoja de "Configuración"
-  const config: any = {};
-  for (let i = 1; i < configData.length; i++) {
-    const row = configData[i];
-    if (row && row.length >= 2) {
-      const key = row[0];
-      let value = row[1];
-      if (key === 'Fecha de inicio') {
-        if (typeof value === 'number') {
-          value = excelDateToJSDate(value);
-        } else {
-          value = new Date(value);
-        }
-      }
-      config[key] = value;
-    }
-  }
-  
-  // Se asignan valores por defecto en caso de no venir en el Excel.
-  config["Nº de personal para el registro"] = config["Nº de personal para el registro"] || 1;
-  config["Nº de carreras clasificatorias"] = config["Nº de carreras clasificatorias"] || 0;
-  config["Tiempo Eliminatorias"] = config["Tiempo Eliminatorias"] || 0;
-  config["Nº de Jueces para el portfolio técnico"] = config["Nº de Jueces para el portfolio técnico"] || 0;
-  config["Nº de Jueces para el portfolio de empresa"] = config["Nº de Jueces para el portfolio de empresa"] || 0;
-  config["Nº de Jueces para la presentación verbal"] = config["Nº de Jueces para la presentación verbal"] || 0;
+export interface Evento {
+  nombre:   string;
+  duracion: number;
+  inicio:   Date;
+  fin:      Date;
+}
 
-  // Procesar la hoja de "Equipos"
-  // Se asume que la primera fila es el encabezado: ["ID", "Nombre", "Categoria"]
-  const equipos = [];
-  for (let i = 1; i < equiposData.length; i++) {
-    const row = equiposData[i];
-    if (row && row.length >= 3) {
-      const equipo = {
-        id: row[0],
-        nombre: row[1],
-        categoria: row[2],
-        horario: []
-      };
-      equipos.push(equipo);
+export interface Equipo {
+  id:        number;
+  nombre:    string;
+  categoria: 'Entry' | 'Development' | 'Professional';
+  horario:   Evento[];
+}
+
+export function processInputData(
+  configData: any[][],
+  equiposData: any[][]
+): { config: Record<string, any>; equipos: Equipo[] } {
+  const config: Record<string, any> = {};
+
+  // 1) Leemos todas las claves de configuración
+  for (let i = 1; i < configData.length; i++) {
+    const [key, raw] = configData[i];
+    if (!key) continue;
+    let val = raw;
+    if (key === 'Fecha de inicio') {
+      val = raw instanceof Date
+            ? new Date(raw)
+            : typeof raw === 'number'
+              ? excelDateToJSDate(raw)
+              : new Date(raw);
+      val.setSeconds(0, 0);
     }
+    config[key] = val;
+  }
+
+  // 2) Valores por defecto
+  config["Nº de personal para el registro"]           ||= 1;
+  config["Nº de carreras clasificatorias"]            ||= 1;
+  config["Tiempo Eliminatorias"]                      ||= 0;
+  config["Nº de Jueces para el portfolio técnico"]    ||= 0;
+  config["Nº de Jueces para el portfolio de empresa"] ||= 0;
+  config["Nº de Jueces para la presentación verbal"]  ||= 0;
+  config["Nº de equipos que se clasifican"]           ||= 0;
+
+  // 3) Validación de número de equipos por categoría
+  const expectedEntry       = config["Nº equipos de Entry"]       as number;
+  const expectedDev         = config["Nº equipos de Development"] as number;
+  const expectedProfessional= config["Nº equipos de Professional"]as number;
+  // Contamos las filas de equipos (excluyendo encabezado)
+  const filas = equiposData.slice(1).filter(r => r[0]!=null && r[1] && r[2]);
+  const countByCat = filas.reduce<Record<string,number>>((acc, [id,nombre,categoria])=>{
+    acc[categoria] = (acc[categoria]||0) + 1;
+    return acc;
+  }, {});
+  if ((countByCat['Entry']||0)       !== expectedEntry
+   ||(countByCat['Development']||0) !== expectedDev
+   ||(countByCat['Professional']||0)!== expectedProfessional) {
+    throw new Error(
+      `El número de filas en "Equipos" (${JSON.stringify(countByCat)}) no coincide con `+
+      `"Nº equipos de ..." en configuración (${expectedEntry}, ${expectedDev}, ${expectedProfessional}).`
+    );
+  }
+
+  // 4) Construcción del array de equipos
+  const equipos: Equipo[] = [];
+  for (let i = 1; i < equiposData.length; i++) {
+    const [id, nombre, categoria] = equiposData[i];
+    if (id == null || !nombre || !categoria) continue;
+    equipos.push({ id, nombre, categoria, horario: [] });
   }
 
   return { config, equipos };

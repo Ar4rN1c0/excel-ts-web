@@ -7,33 +7,39 @@ async function generarDummyInput() {
 
   // Hoja "Configuración" con datos dummy
   const configSheet = workbook.addWorksheet('Configuración');
-  // Encabezados
   configSheet.addRow(['Parámetro', 'Valor']);
 
-  // Configuración con más equipos y algunos parámetros adicionales
-  const numEntry = 5;
-  const numDevelopment = 5;
-  const numProfessional = 5;
-  const totalEquipos = numEntry + numDevelopment + numProfessional;
-  
+  // Definimos un número mayor de equipos de cada categoría
+  const numEntry        = 12;
+  const numDevelopment  = 10;
+  const numProfessional = 10;
+  const totalEquipos    = numEntry + numDevelopment + numProfessional; // 32
+
+  // Parámetros obligatorios
   configSheet.addRow(['Nº equipos de Entry', numEntry]);
   configSheet.addRow(['Nº equipos de Development', numDevelopment]);
   configSheet.addRow(['Nº equipos de Professional', numProfessional]);
-  configSheet.addRow(['Nº de Jueces para el portfolio técnico', 3]);
-  configSheet.addRow(['Nº de Jueces para el portfolio de empresa', 3]);
-  configSheet.addRow(['Nº de Jueces para la presentación verbal', 2]);
-  configSheet.addRow(['Nº de personal para el registro', 2]);
-  // Número de carreras clasificatorias (por ejemplo, 3) y tiempo para eliminatorias (en minutos)
+
+  // Número de jueces por tipo
+  configSheet.addRow(['Nº de Jueces para el portfolio técnico', 4]);
+  configSheet.addRow(['Nº de Jueces para el portfolio de empresa', 4]);
+  configSheet.addRow(['Nº de Jueces para la presentación verbal', 3]);
+
+  // Personal para el registro (más de 1 para paralelizar)
+  configSheet.addRow(['Nº de personal para el registro', 3]);
+
+  // Clasificatorias y eliminatorias
   configSheet.addRow(['Nº de carreras clasificatorias', 3]);
   configSheet.addRow(['Tiempo Eliminatorias', 20]);
-  // Definir el número de equipos que se clasifican (puede ser menor o igual al total de equipos)
+
+  // Número de equipos que pasan a eliminatorias (debe ser 8, 16 o 32)
   configSheet.addRow(['Nº de equipos que se clasifican', totalEquipos]);
-  // Fecha de inicio (a los 9:00 AM del 1 de mayo de 2025)
+
+  // Fecha de inicio de la competición
   configSheet.addRow(['Fecha de inicio', new Date(2025, 4, 1, 9, 0, 0)]);
 
   // Hoja "Equipos" con datos dummy
   const equiposSheet = workbook.addWorksheet('Equipos');
-  // Encabezados para equipos: ID, Nombre y Categoría
   equiposSheet.addRow(['ID', 'Nombre', 'Categoria']);
 
   // Generar equipos para cada categoría
@@ -53,7 +59,10 @@ async function generarDummyInput() {
 
   // Escribir el archivo Excel en el sistema de archivos
   await workbook.xlsx.writeFile('dummy-input.xlsx');
-  console.log('Archivo dummy-input.xlsx generado correctamente con', totalEquipos, 'equipos.');
+  console.log(
+    `Archivo dummy-input.xlsx generado correctamente con ${totalEquipos} equipos: ` +
+    `${numEntry} Entry, ${numDevelopment} Development, ${numProfessional} Professional.`
+  );
 }
 
 generarDummyInput().catch((error) => {

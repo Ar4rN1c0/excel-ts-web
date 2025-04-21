@@ -1,87 +1,59 @@
-// main.ts
+// src/main.ts
 
 import './style.css';
 import * as XLSX from 'xlsx';
 import { processInputData } from './excel';
 import { generarExcelEquipo, generarExcelMaster, generarExcelMasterJueces } from './output';
-import { Equipo, asignarHorarios, asignarHorariosJueces, Juez } from './timetable';
+import { asignarHorarios, asignarHorariosJueces } from './timetable';
 
 document.addEventListener('DOMContentLoaded', () => {
-  const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-  const appDiv = document.getElementById('app');
+  const fileInput = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+  const appDiv    = document.getElementById('app')!;
 
   fileInput.addEventListener('change', () => {
-    if (!fileInput.files || fileInput.files.length === 0) return;
-    const file = fileInput.files[0];
+    if (!fileInput.files?.length) return;
     const reader = new FileReader();
+    reader.onload = () => {
+      const data     = new Uint8Array(reader.result as ArrayBuffer);
+      // Leemos fechas como Date sin conversión a UTC
+      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
 
-    reader.onload = (e: ProgressEvent<FileReader>) => {
-      const data = new Uint8Array(e.target?.result as ArrayBuffer);
-      const workbook = XLSX.read(data, { type: 'array' });
-      
-      // Obtener las hojas "Configuración" y "Equipos"
-      const configSheet = workbook.Sheets["Configuración"];
-      const equiposSheet = workbook.Sheets["Equipos"];
-      
-      if (!configSheet || !equiposSheet) {
-        console.error("El archivo Excel debe contener las hojas 'Configuración' y 'Equipos'.");
-        if (appDiv) {
-          appDiv.innerHTML = "El archivo Excel debe contener las hojas 'Configuración' y 'Equipos'.";
-        }
+      const cfgSheet = workbook.Sheets['Configuración'];
+      const eqsSheet = workbook.Sheets['Equipos'];
+      if (!cfgSheet || !eqsSheet) {
+        appDiv.textContent = "Faltan las hojas 'Configuración' o 'Equipos'.";
         return;
       }
-      
-      // Convertir hojas a arrays (con cellDates activado)
-      const configData = XLSX.utils.sheet_to_json(configSheet, { header: 1, cellDates: true } as any);
-      const equiposData = XLSX.utils.sheet_to_json(equiposSheet, { header: 1, cellDates: true } as any);
 
-      const { config, equipos } = processInputData(configData, equiposData) as { config: any, equipos: Equipo[] };
+      // raw:true para que las fechas vengan como Date
+      const configData  = XLSX.utils.sheet_to_json(cfgSheet,  { header: 1, raw: true }) as any[][];
+      const equiposData = XLSX.utils.sheet_to_json(eqsSheet, { header: 1, raw: true }) as any[][];
 
-      // Convertir "Fecha de inicio" a Date, en caso de ser necesario
-      const fechaInicio = config['Fecha de inicio'] instanceof Date 
-        ? config['Fecha de inicio'] 
-        : new Date(config['Fecha de inicio']);
+      const { config, equipos } = processInputData(configData, equiposData);
+      const jueces = asignarHorariosJueces(equipos, config);
+      asignarHorarios(equipos, config, config['Fecha de inicio']);
 
-      // Asignar horarios a equipos (con eventos globales y locales)
-      asignarHorarios(equipos, config, fechaInicio);
+      appDiv.innerHTML = '';
 
-      // Asignar horarios a jueces usando la hora global de inicio de evaluaciones (guardada en config.globalEvalStart)
-      const jueces: Juez[] = asignarHorariosJueces(equipos, config, config.globalEvalStart);
+      const btnMaster = document.createElement('button');
+      btnMaster.textContent = "Descargar Horario Maestro";
+      btnMaster.onclick   = () => generarExcelMaster(equipos);
+      appDiv.appendChild(btnMaster);
 
-      if (appDiv) {
-        appDiv.innerHTML = '';
+      const teamContainer = document.createElement('div');
+      equipos.forEach(eq => {
+        const btn = document.createElement('button');
+        btn.textContent = eq.nombre;
+        btn.onclick   = () => generarExcelEquipo(eq);
+        teamContainer.appendChild(btn);
+      });
+      appDiv.appendChild(teamContainer);
 
-        // Botón para descargar el Horario Maestro de equipos
-        const btnMaster = document.createElement('button');
-        btnMaster.textContent = "Descargar Horario Maestro";
-        btnMaster.addEventListener('click', () => {
-          generarExcelMaster(equipos);
-        });
-        appDiv.appendChild(btnMaster);
-
-        // Sección de botones para cada equipo
-        const teamContainer = document.createElement('div');
-        teamContainer.id = 'team-buttons';
-        equipos.forEach((equipo) => {
-          const btn = document.createElement('button');
-          btn.textContent = equipo.nombre;
-          btn.addEventListener('click', () => {
-            generarExcelEquipo(equipo);
-          });
-          teamContainer.appendChild(btn);
-        });
-        appDiv.appendChild(teamContainer);
-
-        // Botón para descargar el horario maestro para todos los jueces
-        const btnJuecesMaster = document.createElement('button');
-        btnJuecesMaster.textContent = "Descargar Horario Jueces";
-        btnJuecesMaster.addEventListener('click', () => {
-          generarExcelMasterJueces(jueces);
-        });
-        appDiv.appendChild(btnJuecesMaster);
-      }
+      const btnJueces = document.createElement('button');
+      btnJueces.textContent = "Descargar Horario Jueces";
+      btnJueces.onclick = () => generarExcelMasterJueces(jueces);
+      appDiv.appendChild(btnJueces);
     };
-
-    reader.readAsArrayBuffer(file);
+    reader.readAsArrayBuffer(fileInput.files[0]);
   });
 });

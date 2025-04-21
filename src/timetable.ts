@@ -1,247 +1,220 @@
-export interface Evento {
-    nombre: string;
-    duracion: number; // en minutos
-    inicio?: Date;
-    fin?: Date;
-}
-
-export interface Equipo {
-    id: number;
-    nombre: string;
-    // La categoría es una de: 'Entry', 'Development' o 'Professional'
-    categoria: 'Entry' | 'Development' | 'Professional';
-    horario: Evento[];
-}
+// src/timetable.ts
+import { Equipo, Evento } from './excel';
 
 export interface Juez {
-    id: number;
-    tipo: 'Portfolio Técnico' | 'Portfolio de Empresa' | 'Presentación verbal';
-    horario: Evento[];
+  id: number;
+  tipo: 'Presentación verbal' | 'Portfolio Técnico' | 'Portfolio de Empresa';
+  horario: Evento[];
 }
 
-export function asignarHorarios(equipos: Equipo[], config: any, fechaInicio: Date): void {
-    // 1. Registro: asignar slots individuales según el número de personal.
-    const personalRegistro = config["Nº de personal para el registro"];
-    equipos.forEach((equipo, index) => {
-        const regSlot = Math.floor(index / personalRegistro);
-        const regStart = new Date(fechaInicio.getTime() + regSlot * 5 * 60000);
-        const regEnd = new Date(regStart.getTime() + 5 * 60000);
-        equipo.horario.push({
-            nombre: 'Registro',
-            duracion: 5,
-            inicio: regStart,
-            fin: regEnd
-        });
-    });
+export function asignarHorarios(
+  equipos: Equipo[],
+  config: Record<string, any>,
+  fechaInicio: Date
+): void {
+  // --- VALIDACIONES ---
+  const totalEquipos = equipos.length;
+  const numClasifPorEquipo = config['Nº de carreras clasificatorias'] as number;
+  if (numClasifPorEquipo * 2 > totalEquipos) {
+    throw new Error(
+      `No puede haber ${numClasifPorEquipo} carreras clasificatorias por equipo con solo ${totalEquipos} equipos.`
+    );
+  }
+  const numClasificados = config['Nº de equipos que se clasifican'] as number;
+  if (![8, 16, 32].includes(numClasificados)) {
+    throw new Error(
+      `El número de equipos que se clasifican (${numClasificados}) debe ser 8, 16 o 32.`
+    );
+  }
+  if (numClasificados > totalEquipos) {
+    throw new Error(
+      `No se pueden clasificar ${numClasificados} equipos de un total de ${totalEquipos}.`
+    );
+  }
 
-    // 2. Calcular el fin global del Registro.
-    const globalRegistrationFinishTime = equipos.reduce((max, equipo) => {
-        const regEvent = equipo.horario.find(e => e.nombre === 'Registro');
-        return regEvent && regEvent.fin && regEvent.fin.getTime() > max ? regEvent.fin.getTime() : max;
-    }, 0);
-    const globalRegistrationFinish = new Date(globalRegistrationFinishTime);
+  // --- 1) Registro paralelo (5') SOLO Development & Professional ---
+  const pReg = config['Nº de personal para el registro'] as number;
+  const regTeams = equipos.filter(e => e.categoria !== 'Entry');
+  regTeams.forEach((eq, idx) => {
+    const slot = Math.floor(idx / pReg);
+    const ini  = new Date(fechaInicio.getTime() + slot * 5 * 60000);
+    ini.setSeconds(0, 0);
+    const fin  = new Date(ini.getTime()  + 5 * 60000);
+    fin.setSeconds(0, 0);
+    eq.horario.push({ nombre: 'Registro', duracion: 5, inicio: ini, fin });
+  });
 
-    // 3. Pausa de 20 minutos (Charla/Presentación) tras el último registro.
-    const globalTalkStart = new Date(globalRegistrationFinish.getTime() + 20 * 60000);
+  // --- 2) Charla/Presentación (20') tras último registro ---
+  const ultimaFinReg = Math.max(
+    ...regTeams.map(e => e.horario.find(x => x.nombre === 'Registro')!.fin.getTime())
+  );
+  const charlaIni = new Date(ultimaFinReg + 20 * 60000);
+  charlaIni.setSeconds(0, 0);
+  const charlaFin = new Date(charlaIni.getTime() + 20 * 60000);
+  charlaFin.setSeconds(0, 0);
+  equipos.forEach(e =>
+    e.horario.push({
+      nombre: 'Charla/Presentación',
+      duracion: 20,
+      inicio: charlaIni,
+      fin: charlaFin
+    })
+  );
 
-    // 4. Ceremonia de Inauguración para todos los equipos (20 min)
-    const globalInauguracionStart = new Date(globalTalkStart.getTime());
-    const globalInauguracionEnd = new Date(globalInauguracionStart.getTime() + 20 * 60000);
-    equipos.forEach(equipo => {
-        equipo.horario.push({
-            nombre: 'Ceremonia de Inauguración',
-            duracion: 20,
-            inicio: globalInauguracionStart,
-            fin: globalInauguracionEnd
-        });
-    });
-    // Guardamos en la configuración la hora global de inicio de evaluaciones.
-    const globalEvalStart = globalInauguracionEnd;
-    config.globalEvalStart = globalEvalStart;
+  // --- 3) Ceremonia de Inauguración (20') ---
+  const inaugIni = new Date(charlaFin);
+  inaugIni.setSeconds(0, 0);
+  const inaugFin = new Date(inaugIni.getTime() + 20 * 60000);
+  inaugFin.setSeconds(0, 0);
+  equipos.forEach(e =>
+    e.horario.push({
+      nombre: 'Ceremonia de Inauguración',
+      duracion: 20,
+      inicio: inaugIni,
+      fin: inaugFin
+    })
+  );
 
-    // 5. Evaluaciones individuales a partir de globalEvalStart.
-    // Duraciones según categoría:
-    //   • Entry: Escrutinio 20, Presentación verbal 10, Portfolio Técnico 10, Portfolio de Empresa 15 → Total 55 min.
-    //   • Development: Escrutinio 20, Presentación verbal 20, Portfolio Técnico 15, Portfolio de Empresa 15 → Total 70 min.
-    //   • Professional: Escrutinio 25, Presentación verbal 20, Portfolio Técnico 15, Portfolio de Empresa 15 → Total 75 min.
-    equipos.forEach(equipo => {
-        let currentStart = new Date(globalInauguracionEnd.getTime());
-        const durations: { [key: string]: number } = {
-            'Escrutinio': equipo.categoria === 'Professional' ? 25 : 20,
-            'Presentación verbal': equipo.categoria === 'Entry' ? 10 : 20,
-            'Portfolio Técnico': equipo.categoria === 'Entry' ? 10 : 15,
-            'Portfolio de Empresa': 15
-        };
-        for (const actividad of ['Escrutinio', 'Presentación verbal', 'Portfolio Técnico', 'Portfolio de Empresa']) {
-            const dur = durations[actividad];
-            const inicio = new Date(currentStart.getTime());
-            const fin = new Date(inicio.getTime() + dur * 60000);
-            equipo.horario.push({
-                nombre: actividad,
-                duracion: dur,
-                inicio,
-                fin
-            });
-            currentStart = fin;
-        }
-        // Guardamos el fin de las evaluaciones individuales.
-        (equipo as any).individualEnd = currentStart;
-    });
+  // --- 4) Evaluaciones individuales secuenciales ---
+  let globalEndEval = inaugFin.getTime();
+  equipos.forEach(e => {
+    let cur = new Date(inaugFin);
+    const times: Record<string, number> = {
+      'Escrutinio':           e.categoria === 'Professional' ? 25 : 20,
+      'Presentación verbal':  e.categoria === 'Entry'        ? 10 : 20,
+      'Portfolio Técnico':    e.categoria === 'Entry'        ? 10 : 15,
+      'Portfolio de Empresa': 15
+    };
 
-    // Calcular el fin global de las evaluaciones individuales.
-    const globalEvalEndTime = equipos.reduce((max, equipo) => {
-        const teamEnd = (equipo as any).individualEnd.getTime();
-        return teamEnd > max ? teamEnd : max;
-    }, 0);
-    const globalEvalEnd = new Date(globalEvalEndTime);
-
-    // 6. Montaje del Pit Display:
-    // Según los lineamientos, solo los equipos de Development y Professional realizan este evento.
-    const equiposConPit = equipos.filter(e => e.categoria !== 'Entry');
-    const globalPitDisplayStart = new Date(globalEvalEnd.getTime());
-    const globalPitDisplayEnd = new Date(globalPitDisplayStart.getTime() + 65 * 60000);
-    equiposConPit.forEach(equipo => {
-        equipo.horario.push({
-            nombre: 'Montaje del Pit Display',
-            duracion: 65,
-            inicio: globalPitDisplayStart,
-            fin: globalPitDisplayEnd
-        });
-    });
-
-    // 7. Fase Eliminatoria de Carreras:
-    // Se consideran los equipos clasificados según el parámetro "Nº de equipos que se clasifican".
-    const numCualificados = config["Nº de equipos que se clasifican"] || equipos.length;
-    const equiposCualificados = equipos.slice(0, numCualificados);
-
-    // Calcular el inicio global de las carreras:
-    // - Para equipos Entry: se usa el fin de sus evaluaciones ((e as any).individualEnd).
-    // - Para equipos con Pit Display: se usa el fin del Pit Display.
-    // Se toma el máximo para que todos estén listos antes de iniciar carreras.
-    const globalRaceStartTime = new Date(Math.max(
-        ...equiposCualificados.map(e => 
-            e.categoria === 'Entry' ? (e as any).individualEnd.getTime() : globalPitDisplayEnd.getTime()
-        )
-    ));
-
-    // Iniciamos la asignación de carreras usando globalRaceStartTime.
-    let raceStartTime = new Date(globalRaceStartTime.getTime());
-    let globalRaceCounter = 1;
-
-    // Las carreras se asignan agrupando por categoría, en el siguiente orden: Entry, Development y Professional.
-    const categorias: ('Entry' | 'Development' | 'Professional')[] = ['Entry', 'Development', 'Professional'];
-    for (const cat of categorias) {
-        const equiposCat = equiposCualificados.filter(e => e.categoria === cat);
-        for (let i = 0; i < equiposCat.length; i += 2) {
-            if (i + 1 < equiposCat.length) {
-                // Se forman parejas: ambos equipos comparten el mismo evento de carrera.
-                const raceEvent = {
-                    nombre: `Carrera Clasificatoria ${globalRaceCounter}`,
-                    duracion: 10,
-                    inicio: new Date(raceStartTime.getTime()),
-                    fin: new Date(raceStartTime.getTime() + 10 * 60000)
-                };
-                equiposCat[i].horario.push(raceEvent);
-                equiposCat[i + 1].horario.push(raceEvent);
-                globalRaceCounter++;
-                raceStartTime = new Date(raceEvent.fin.getTime());
-            } else {
-                // Si sólo queda un equipo, se le asigna un "bye" (evento individual).
-                const raceEvent = {
-                    nombre: `Carrera Clasificatoria ${globalRaceCounter} (bye)`,
-                    duracion: 10,
-                    inicio: new Date(raceStartTime.getTime()),
-                    fin: new Date(raceStartTime.getTime() + 10 * 60000)
-                };
-                equiposCat[i].horario.push(raceEvent);
-                globalRaceCounter++;
-                raceStartTime = new Date(raceEvent.fin.getTime());
-            }
-        }
+    for (const nombre of Object.keys(times)) {
+      const dur = times[nombre];
+      const ini = new Date(cur);
+      ini.setSeconds(0, 0);
+      const fin = new Date(ini.getTime() + dur * 60000);
+      fin.setSeconds(0, 0);
+      e.horario.push({ nombre, duracion: dur, inicio: ini, fin });
+      cur = fin;
     }
+    globalEndEval = Math.max(globalEndEval, cur.getTime());
+  });
 
-    // 8. Eventos globales posteriores a las carreras.
-    const tiempoEliminatorias = config["Tiempo Eliminatorias"] || 0;
-    const reservaStart = new Date(raceStartTime.getTime());
-    const reservaEnd = new Date(reservaStart.getTime() + tiempoEliminatorias * 60000);
-    const reservaEvent = {
-        nombre: 'Reserva Eliminatorias',
-        duracion: tiempoEliminatorias,
-        inicio: reservaStart,
-        fin: reservaEnd
-    };
-    equipos.forEach(equipo => {
-        equipo.horario.push({ ...reservaEvent });
-    });
+  // --- 5) Montaje del Pit Display (65') – todos los equipos juntos ---
+  const pitIni = new Date(globalEndEval);
+  pitIni.setSeconds(0, 0);
+  const pitFin = new Date(pitIni.getTime() + 65 * 60000);
+  pitFin.setSeconds(0, 0);
+  equipos.forEach(e =>
+    e.horario.push({
+      nombre: 'Montaje del Pit Display',
+      duracion: 65,
+      inicio: pitIni,
+      fin: pitFin
+    })
+  );
 
-    raceStartTime = new Date(reservaEnd.getTime());
-    const ceremoniaStart = new Date(raceStartTime.getTime());
-    const ceremoniaEnd = new Date(ceremoniaStart.getTime() + 90 * 60000);
-    const ceremoniaEvent = {
-        nombre: 'Ceremonia de Clausura',
-        duracion: 90,
-        inicio: ceremoniaStart,
-        fin: ceremoniaEnd
-    };
-    equipos.forEach(equipo => {
-        equipo.horario.push({ ...ceremoniaEvent });
-    });
+  // --- 6) Clasificatorias globales (aleatorias) ---
+  let raceTime = pitFin.getTime();
+  let ctr = 1;
+  const pool = [...equipos];
+  for (let r = 0; r < numClasifPorEquipo; r++) {
+    shuffle(pool);
+    for (let i = 0; i < pool.length; i += 2) {
+      const A = pool[i];
+      const B = pool[i + 1] || null;
+      const ini = new Date(raceTime);
+      ini.setSeconds(0, 0);
+      const fin = new Date(ini.getTime() + 10 * 60000);
+      fin.setSeconds(0, 0);
+      const nombre = B
+        ? `Carrera Clasificatoria ${ctr}`
+        : `Carrera Clasificatoria ${ctr} (bye)`;
+      const carrera: Evento = { nombre, duracion: 10, inicio: ini, fin };
+      A.horario.push(carrera);
+      if (B) B.horario.push(carrera);
+      ctr++;
+      raceTime = fin.getTime();
+    }
+  }
+
+  // --- 7) Eliminatorias (octavos, cuartos, semis, final) ---
+  const roundNamesMap: Record<number, string[]> = {
+    8:  ['Cuartos de Final', 'Semifinal', 'Final'],
+    16: ['Octavos de Final', 'Cuartos de Final', 'Semifinal', 'Final'],
+    32: ['Dieciseisavos de Final', 'Octavos de Final', 'Cuartos de Final', 'Semifinal', 'Final']
+  };
+  const roundNames = roundNamesMap[numClasificados];
+  let equiposEnRonda = numClasificados;
+
+  for (const roundName of roundNames) {
+    const partidos = equiposEnRonda / 2;
+    for (let m = 1; m <= partidos; m++) {
+      const ini = new Date(raceTime);
+      ini.setSeconds(0, 0);
+      const fin = new Date(ini.getTime() + 10 * 60000);
+      fin.setSeconds(0, 0);
+      const nombre = `${roundName} ${m}`;
+      const ev: Evento = { nombre, duracion: 10, inicio: ini, fin };
+      // Reservamos la franja para todos los equipos por si clasifican
+      equipos.forEach(e => e.horario.push(ev));
+      raceTime = fin.getTime();
+    }
+    equiposEnRonda = partidos;
+  }
+
+  // --- 8) Ceremonia de Clausura (90') ---
+  const clsIni = new Date(raceTime);
+  clsIni.setSeconds(0, 0);
+  const clsFin = new Date(clsIni.getTime() + 90 * 60000);
+  clsFin.setSeconds(0, 0);
+  equipos.forEach(e =>
+    e.horario.push({
+      nombre: 'Ceremonia de Clausura',
+      duracion: 90,
+      inicio: clsIni,
+      fin: clsFin
+    })
+  );
 }
 
-export function asignarHorariosJueces(equipos: Equipo[], config: any, globalEvalStart: Date): Juez[] {
-    // Se definen bloques globales para las evaluaciones.
-    const tieneProfessional = equipos.some(e => e.categoria === 'Professional');
-    const globalEscrutinioDuration = tieneProfessional ? 25 : 20;
-    const presentacionDuration = 20;
-    const portfolioTecnicoDuration = 15;
-    const portfolioEmpresaDuration = 15;
+// Función auxiliar para barajar un array in-place
+function shuffle<T>(arr: T[]): void {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+}
 
-    const globalPresentacionStart = new Date(globalEvalStart.getTime() + globalEscrutinioDuration * 60000);
-    const globalPresentacionEnd = new Date(globalPresentacionStart.getTime() + presentacionDuration * 60000);
-    const globalPortfolioTecnicoStart = new Date(globalPresentacionEnd.getTime());
-    const globalPortfolioTecnicoEnd = new Date(globalPortfolioTecnicoStart.getTime() + portfolioTecnicoDuration * 60000);
-    const globalPortfolioEmpresaStart = new Date(globalPortfolioTecnicoEnd.getTime());
-    const globalPortfolioEmpresaEnd = new Date(globalPortfolioEmpresaStart.getTime() + portfolioEmpresaDuration * 60000);
+export function asignarHorariosJueces(
+  equipos: Equipo[],
+  config: Record<string, any>
+): Juez[] {
+  const jueces: Juez[] = [];
+  const slots = {
+    'Presentación verbal': equipos.flatMap(e =>
+      e.horario.filter(ev => ev.nombre === 'Presentación verbal')
+    ),
+    'Portfolio Técnico': equipos.flatMap(e =>
+      e.horario.filter(ev => ev.nombre === 'Portfolio Técnico')
+    ),
+    'Portfolio de Empresa': equipos.flatMap(e =>
+      e.horario.filter(ev => ev.nombre === 'Portfolio de Empresa')
+    )
+  } as const;
 
-    const jueces: Juez[] = [];
-    const numJuecesPresentacion = config["Nº de Jueces para la presentación verbal"] || 0;
-    for (let i = 1; i <= numJuecesPresentacion; i++) {
-        jueces.push({
-            id: i,
-            tipo: 'Presentación verbal',
-            horario: [{
-                nombre: 'Evaluación de Presentación verbal',
-                duracion: presentacionDuration,
-                inicio: globalPresentacionStart,
-                fin: globalPresentacionEnd
-            }]
-        });
+  for (const tipo of Object.keys(slots) as Array<keyof typeof slots>) {
+    const n = config[`Nº de Jueces para ${tipo.toLowerCase()}`] as number;
+    for (let i = 1; i <= n; i++) {
+      jueces.push({
+        id: i,
+        tipo,
+        horario: slots[tipo].map(ev => ({
+          nombre: `Evaluación de ${tipo}`,
+          duracion: ev.duracion,
+          inicio: ev.inicio,
+          fin: ev.fin
+        }))
+      });
     }
-    const numJuecesPortfolioTec = config["Nº de Jueces para el portfolio técnico"] || 0;
-    for (let i = 1; i <= numJuecesPortfolioTec; i++) {
-        jueces.push({
-            id: i,
-            tipo: 'Portfolio Técnico',
-            horario: [{
-                nombre: 'Evaluación de Portfolio Técnico',
-                duracion: portfolioTecnicoDuration,
-                inicio: globalPortfolioTecnicoStart,
-                fin: globalPortfolioTecnicoEnd
-            }]
-        });
-    }
-    const numJuecesPortfolioEmp = config["Nº de Jueces para el portfolio de empresa"] || 0;
-    for (let i = 1; i <= numJuecesPortfolioEmp; i++) {
-        jueces.push({
-            id: i,
-            tipo: 'Portfolio de Empresa',
-            horario: [{
-                nombre: 'Evaluación de Portfolio de Empresa',
-                duracion: portfolioEmpresaDuration,
-                inicio: globalPortfolioEmpresaStart,
-                fin: globalPortfolioEmpresaEnd
-            }]
-        });
-    }
-    return jueces;
+  }
+  return jueces;
 }
