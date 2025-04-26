@@ -1,259 +1,236 @@
-// timetable.ts
+// src/timetable.ts
 
 export interface Evento {
-  nombre: string;
+  nombre:   string;
   duracion: number; // en minutos
-  inicio?: Date;
-  fin?: Date;
+  inicio?:  Date;
+  fin?:     Date;
 }
 
 export interface Equipo {
-  id: number;
-  nombre: string;
-  // La categoría es una de: 'Entry', 'Development' o 'Professional'
-  categoria: 'Entry' | 'Development' | 'Professional';
-  horario: Evento[];
+  id:        number;
+  nombre:    string;
+  categoria: 'Entry'|'Development'|'Professional';
+  horario:   Evento[];
 }
 
 export interface Juez {
-  id: number;
-  tipo: 'Portfolio Técnico' | 'Portfolio de Empresa' | 'Presentación verbal';
+  id:     number;
+  tipo:   'Portfolio Técnico'|'Portfolio de Empresa'|'Presentación verbal';
   horario: Evento[];
 }
 
 /**
- * Asigna a cada equipo todos los bloques:
- *  1) Registro
- *  2) Charla/Presentación
- *  3) Ceremonia de Inauguración
- *  4) Evaluaciones (scrutinio, verbal, técnico, empresa)
- *  5) Montaje global de Pit Display
- *  6) N rondas de Carreras clasificatorias
- *  7) Reserva para eliminatorias
- *  8) Ceremonia de Clausura
+ * Asigna todos los bloques dentro de [start, endWindow].
+ * Devuelve la hora de fin de inauguración (para los jueces).
+ * Sólo añade la Ceremonia de Clausura si isLastDay === true.
  */
 export function asignarHorarios(
   equipos: Equipo[],
   config: any,
-  fechaInicio: Date
-): void {
-  // 1) Registro (5′ por equipo, slots paralelos)
-  const personalRegistro = config["Nº de personal para el registro"] || 1;
+  start: Date,
+  endWindow: Date,
+  isLastDay = false
+): Date {
+  // 1) Registro (5′)
+  const pers = config["Nº de personal para el registro"];
   equipos.forEach((eq, i) => {
-    const slot = Math.floor(i / personalRegistro);
-    const inicio = new Date(fechaInicio.getTime() + slot * 5 * 60000);
+    const slot = Math.floor(i / pers);
+    const ini  = new Date(start.getTime() + slot * 5 * 60000);
     eq.horario.push({
-      nombre: 'Registro',
+      nombre:   'Registro',
       duracion: 5,
-      inicio,
-      fin:    new Date(inicio.getTime() + 5 * 60000)
+      inicio:   ini,
+      fin:      new Date(ini.getTime() + 5 * 60000)
     });
   });
-
-  // 2) Fin global de registro
-  const finRegistro = new Date(Math.max(
-    ...equipos.map(e =>
-      e.horario.find(ev => ev.nombre === 'Registro')!.fin!.getTime()
-    )
+  const finReg = new Date(Math.max(
+    ...equipos.map(e => e.horario.find(ev => ev.nombre === 'Registro')!.fin!.getTime())
   ));
 
-  // 3) Charla/Presentación (20′)
-  const inicioCharla = new Date(finRegistro.getTime());
-  const finCharla    = new Date(inicioCharla.getTime() + 20 * 60000);
+  // 2) Charla/Presentación (20′)
+  const iniChar = finReg;
+  const finChar = new Date(iniChar.getTime() + 20 * 60000);
   equipos.forEach(e =>
     e.horario.push({
       nombre:   'Charla/Presentación',
       duracion: 20,
-      inicio:   inicioCharla,
-      fin:      finCharla
+      inicio:   iniChar,
+      fin:      finChar
     })
   );
 
-  // 4) Ceremonia de Inauguración (20′)
-  const inicioInaug = new Date(finCharla.getTime());
-  const finInaug    = new Date(inicioInaug.getTime() + 20 * 60000);
+  // 3) Ceremonia de Inauguración (20′)
+  const iniInau = finChar;
+  const finInau = new Date(iniInau.getTime() + 20 * 60000);
   equipos.forEach(e =>
     e.horario.push({
       nombre:   'Ceremonia de Inauguración',
       duracion: 20,
-      inicio:   inicioInaug,
-      fin:      finInaug
+      inicio:   iniInau,
+      fin:      finInau
     })
   );
 
-  // ➤ Guardamos este fin de inauguración para los jueces
-  config.globalEvalStart = finInaug;
+  const globalEvalStart = finInau;
 
-  // 5) Evaluaciones individuales (serie por equipo)
+  // 4) Evaluaciones individuales
   equipos.forEach(eq => {
-    let cursor = new Date(finInaug.getTime());
-    const durEscr = eq.categoria === 'Professional' ? 25 : 20;
-    const durPres = eq.categoria === 'Entry'        ? 10 : 20;
-    const durTec  = eq.categoria === 'Entry'        ? 10 : 15;
-    const durEmp  = eq.categoria === 'Entry'        ? 15 : 10;
+    let cur   = new Date(finInau.getTime());
+    const dEscr = eq.categoria === 'Professional' ? 25 : 20;
+    const dPres = eq.categoria === 'Entry'        ? 10 : 20;
+    const dTec  = eq.categoria === 'Entry'        ? 10 : 15;
+    const dEmp  = eq.categoria === 'Entry'        ? 15 : 10;
 
     for (const [nombre, dur] of [
-      ['Escrutinio',           durEscr],
-      ['Presentación verbal',  durPres],
-      ['Portfolio Técnico',    durTec],
-      ['Portfolio de Empresa', durEmp]
+      ['Escrutinio', dEscr],
+      ['Presentación verbal', dPres],
+      ['Portfolio Técnico', dTec],
+      ['Portfolio de Empresa', dEmp],
     ] as [string, number][]) {
-      const ini = new Date(cursor.getTime());
+      const ini = new Date(cur.getTime());
       eq.horario.push({
         nombre,
         duracion: dur,
         inicio:   ini,
         fin:      new Date(ini.getTime() + dur * 60000)
       });
-      cursor = new Date(cursor.getTime() + dur * 60000);
+      cur = new Date(cur.getTime() + dur * 60000);
     }
-    (eq as any).individualEnd = cursor;
+    (eq as any).individualEnd = cur;
   });
 
-  // 6) Fin global de evaluaciones individuales
-  const finEvalGlobal = new Date(Math.max(
+  // 5) Montaje del Pit Display (todos a la vez)
+  const finEval = new Date(Math.max(
     ...equipos.map(e => (e as any).individualEnd.getTime())
   ));
-
-  // 7) Montaje de Pit Display (todos juntos)
-  const inicioPit = new Date(finEvalGlobal.getTime());
+  const iniPit = finEval;
   equipos.forEach(eq => {
     const durPit = eq.categoria === 'Entry' ? 60 : 65;
     eq.horario.push({
       nombre:   'Montaje del Pit Display',
       duracion: durPit,
-      inicio:   inicioPit,
-      fin:      new Date(inicioPit.getTime() + durPit * 60000)
+      inicio:   iniPit,
+      fin:      new Date(iniPit.getTime() + durPit * 60000)
     });
   });
-  const finPitGeneral = new Date(inicioPit.getTime() + 65 * 60000);
+  const finPitMax = new Date(iniPit.getTime() + 65 * 60000);
 
-  // 8) Carreras clasificatorias: N rondas
-  const nRondas = config["Nº de carreras clasificatorias"] || 1;
-  const baseRaceStart = new Date(Math.max(
+  // 6) Carreras clasificatorias (una a la vez, 10′ c/u)
+  const raceDur = config["Duración Carrera"] || 10;
+  let cursor = new Date(Math.max(
     ...equipos.map(e =>
       e.categoria === 'Entry'
         ? (e as any).individualEnd.getTime()
-        : finPitGeneral.getTime()
+        : finPitMax.getTime()
     )
   ));
-  let raceCursor = new Date(baseRaceStart.getTime());
-  let contador   = 1;
+  let counter = 1;
   const cats: ('Entry'|'Development'|'Professional')[] = ['Entry','Development','Professional'];
-
-  for (let r = 1; r <= nRondas; r++) {
-    for (const cat of cats) {
-      const lista = equipos.filter(e => e.categoria === cat);
+  for (const cat of cats) {
+    const lista = equipos.filter(e => e.categoria === cat);
+    const nRnd  = config.rounds[cat] || 0;
+    for (let r = 1; r <= nRnd; r++) {
       for (let i = 0; i < lista.length; i += 2) {
-        const ini = new Date(raceCursor.getTime());
-        const fin = new Date(ini.getTime() + 10 * 60000);
-        const nom = i + 1 < lista.length
-          ? `Carrera Clasificatoria ${contador}`
-          : `Carrera Clasificatoria ${contador} (bye)`;
-        const ev  = { nombre: nom, duracion: 10, inicio: ini, fin };
+        const ini = new Date(cursor.getTime());
+        const fin = new Date(ini.getTime() + raceDur * 60000);
+        const nom = (i + 1 < lista.length)
+          ? `Carrera Clasificatoria ${counter}`
+          : `Carrera Clasificatoria ${counter} (bye)`;
+        const ev = { nombre: nom, duracion: raceDur, inicio: ini, fin };
         lista[i].horario.push(ev);
-        if (i + 1 < lista.length) lista[i + 1].horario.push(ev);
-        contador++;
-        raceCursor = fin;
+        if (i + 1 < lista.length) lista[i+1].horario.push(ev);
+        counter++;
+        cursor = fin;
       }
     }
   }
 
-  // 9) Reserva para eliminatorias
-  const reservaMin = config["Tiempo Eliminatorias"] || 0;
-  const inicioRes  = new Date(raceCursor.getTime());
-  const finRes     = new Date(inicioRes.getTime() + reservaMin * 60000);
+  // 7) Reserva de Eliminatorias (nº_clasificados × 10′)
+  const iniR = new Date(cursor.getTime());
+  const finR = new Date(iniR.getTime() + config["Tiempo Eliminatorias"] * 60000);
   equipos.forEach(e =>
     e.horario.push({
       nombre:   'Reserva Eliminatorias',
-      duracion: reservaMin,
-      inicio:   inicioRes,
-      fin:      finRes
+      duracion: config["Tiempo Eliminatorias"],
+      inicio:   iniR,
+      fin:      finR
     })
   );
-  raceCursor = finRes;
+  cursor = finR;
 
-  // 10) Ceremonia de Clausura (90′)
-  const inicioCl  = new Date(raceCursor.getTime());
-  const finCl     = new Date(inicioCl.getTime() + 90 * 60000);
-  equipos.forEach(e =>
-    e.horario.push({
-      nombre:   'Ceremonia de Clausura',
-      duracion: 90,
-      inicio:   inicioCl,
-      fin:      finCl
-    })
-  );
+  // 8) Ceremonia de Clausura (90′) — sólo último día
+  if (isLastDay) {
+    const iniC = new Date(cursor.getTime());
+    const finC = new Date(iniC.getTime() + 90 * 60000);
+    equipos.forEach(e =>
+      e.horario.push({
+        nombre:   'Ceremonia de Clausura',
+        duracion: 90,
+        inicio:   iniC,
+        fin:      finC
+      })
+    );
+    if (finC.getTime() > endWindow.getTime()) {
+      console.warn(`Clausura termina ${finC.toLocaleString()} > ventana acaba ${endWindow.toLocaleString()}`);
+    }
+  }
+
+  return globalEvalStart;
 }
 
-
 /**
- * Asigna a los jueces sus bloques de evaluación,
- * tomando config.globalEvalStart como punto cero.
+ * Genera el horario para cada juez, un bloque diario según su tipo.
  */
 export function asignarHorariosJueces(
   equipos: Equipo[],
   config: any,
-  globalEvalStart: Date
+  globalEvalStarts: Date[]
 ): Juez[] {
-  // Aseguramos t0: preferimos el parámetro, si no, el guardado en config
-  const t0 = globalEvalStart || config.globalEvalStart;
-
-  // Duraciones de cada bloque
-  const durEscr = equipos.some(e => e.categoria === 'Professional') ? 25 : 20;
-  const durPres = 20;
-  const durTec  = 15;
-  const durEmp  = 10;
-
-  // Fechas límite de cada fase
-  const t1 = new Date(t0.getTime() + durEscr * 60000);
-  const t2 = new Date(t1.getTime() + durPres * 60000);
-  const t3 = new Date(t2.getTime() + durTec  * 60000);
-  const t4 = new Date(t3.getTime() + durEmp  * 60000);
+  const dEscr   = equipos.some(e => e.categoria === 'Professional') ? 25 : 20;
+  const dPres   = 20;
+  const dTec    = 15;
+  const dEmp    = 10;
+  const nVerbal = config["Nº de Jueces para la presentación verbal"];
+  const nTec    = config["Nº de Jueces para el portfolio técnico"];
+  const nEmp    = config["Nº de Jueces para el portfolio de empresa"];
 
   const jueces: Juez[] = [];
+  for (let i = 1; i <= nVerbal; i++)    jueces.push({ id: i, tipo:'Presentación verbal',    horario: [] });
+  for (let i = 1; i <= nTec;    i++)    jueces.push({ id: i, tipo:'Portfolio Técnico',     horario: [] });
+  for (let i = 1; i <= nEmp;    i++)    jueces.push({ id: i, tipo:'Portfolio de Empresa',   horario: [] });
 
-  // 1) Jueces de Presentación verbal
-  for (let i = 1, n = config["Nº de Jueces para la presentación verbal"] || 0; i <= n; i++) {
-    jueces.push({
-      id:     i,
-      tipo:  'Presentación verbal',
-      horario: [{
+  globalEvalStarts.forEach(t0 => {
+    const t1 = new Date(t0.getTime() + dEscr * 60000);
+    const t2 = new Date(t1.getTime() + dPres * 60000);
+    const t3 = new Date(t2.getTime() + dTec  * 60000);
+    const t4 = new Date(t3.getTime() + dEmp  * 60000);
+
+    for (let i = 0; i < nVerbal; i++) {
+      jueces[i].horario.push({
         nombre:   'Evaluación Presentación verbal',
-        duracion: durPres,
+        duracion: dPres,
         inicio:   t1,
         fin:      t2
-      }]
-    });
-  }
-
-  // 2) Jueces de Portfolio Técnico
-  for (let i = 1, n = config["Nº de Jueces para el portfolio técnico"] || 0; i <= n; i++) {
-    jueces.push({
-      id:     i,
-      tipo:  'Portfolio Técnico',
-      horario: [{
+      });
+    }
+    for (let i = nVerbal; i < nVerbal + nTec; i++) {
+      jueces[i].horario.push({
         nombre:   'Evaluación Portfolio Técnico',
-        duracion: durTec,
+        duracion: dTec,
         inicio:   t2,
         fin:      t3
-      }]
-    });
-  }
-
-  // 3) Jueces de Portfolio de Empresa
-  for (let i = 1, n = config["Nº de Jueces para el portfolio de empresa"] || 0; i <= n; i++) {
-    jueces.push({
-      id:     i,
-      tipo:  'Portfolio de Empresa',
-      horario: [{
+      });
+    }
+    for (let i = nVerbal + nTec; i < nVerbal + nTec + nEmp; i++) {
+      jueces[i].horario.push({
         nombre:   'Evaluación Portfolio de Empresa',
-        duracion: durEmp,
+        duracion: dEmp,
         inicio:   t3,
         fin:      t4
-      }]
-    });
-  }
+      });
+    }
+  });
 
   return jueces;
 }

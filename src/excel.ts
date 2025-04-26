@@ -1,83 +1,88 @@
-// excel.ts
-import * as XLSX from 'xlsx';
+// src/excel.ts
 
-export function handleFileUpload(event: Event) {
-  const input = event.target as HTMLInputElement;
-  if (!input.files || input.files.length === 0) return;
-  const file = input.files[0];
-  const reader = new FileReader();
-
-  reader.onload = (e) => {
-    const data = new Uint8Array(e.target?.result as ArrayBuffer);
-    const workbook = XLSX.read(data, { type: 'array' });
-
-    // Se buscan las hojas "Configuración" y "Equipos"
-    const configSheet = workbook.Sheets["Configuración"];
-    const equiposSheet = workbook.Sheets["Equipos"];
-
-    if (!configSheet || !equiposSheet) {
-      console.error("El archivo Excel debe contener las hojas 'Configuración' y 'Equipos'.");
-      return;
-    }
-
-    const configData = XLSX.utils.sheet_to_json(configSheet, { header: 1, cellDates: true } as any);
-    const equiposData = XLSX.utils.sheet_to_json(equiposSheet, { header: 1, cellDates: true } as any);
-
-    console.log("Datos de Configuración:", configData);
-    console.log("Datos de Equipos:", equiposData);
-
-    const parsedData = processInputData(configData, equiposData);
-    console.log("Datos procesados:", parsedData);
-  };
-
-  reader.readAsArrayBuffer(file);
-}
-
+/** Convierte fechas de Excel (número de serie) a Date de JS */
 function excelDateToJSDate(serial: number): Date {
   return new Date((serial - 25569) * 86400 * 1000);
 }
 
-export function processInputData(configData: any[], equiposData: any[]) {
-  // Procesar la hoja de "Configuración"
+export function processInputData(configData: any[][], equiposData: any[][]) {
   const config: any = {};
+
+  // 1) Leer pares clave/valor desde la hoja "Configuración"
   for (let i = 1; i < configData.length; i++) {
     const row = configData[i];
-    if (row && row.length >= 2) {
-      const key = row[0];
-      let value = row[1];
-      if (key === 'Fecha de inicio') {
-        if (typeof value === 'number') {
-          value = excelDateToJSDate(value);
-        } else {
-          value = new Date(value);
-        }
-      }
-      config[key] = value;
-    }
-  }
-  
-  // Se asignan valores por defecto en caso de no venir en el Excel.
-  config["Nº de personal para el registro"] = config["Nº de personal para el registro"] || 1;
-  config["Nº de carreras clasificatorias"] = config["Nº de carreras clasificatorias"] || 0;
-  config["Tiempo Eliminatorias"] = config["Tiempo Eliminatorias"] || 0;
-  config["Nº de Jueces para el portfolio técnico"] = config["Nº de Jueces para el portfolio técnico"] || 0;
-  config["Nº de Jueces para el portfolio de empresa"] = config["Nº de Jueces para el portfolio de empresa"] || 0;
-  config["Nº de Jueces para la presentación verbal"] = config["Nº de Jueces para la presentación verbal"] || 0;
+    if (!row || row.length < 2) continue;
+    const key = String(row[0]).trim();
+    let   v   = row[1];
 
-  // Procesar la hoja de "Equipos"
-  // Se asume que la primera fila es el encabezado: ["ID", "Nombre", "Categoria"]
-  const equipos = [];
+    // Si vienen como serial de Excel y la clave es de tipo fecha
+    if ((key.startsWith('Fecha de inicio') || key.startsWith('Día') ||
+         key.startsWith('Inicio Día')   || key.startsWith('Fin Día')) &&
+        typeof v === 'number') {
+      v = excelDateToJSDate(v);
+    } else if ((key.startsWith('Fecha de inicio') || key.startsWith('Día') ||
+                key.startsWith('Inicio Día')   || key.startsWith('Fin Día')) &&
+               !(v instanceof Date)) {
+      v = new Date(v);
+    }
+
+    config[key] = v;
+  }
+
+  // 2) Valores por defecto para elementos que pueden no venir
+  config["Nº de personal para el registro"]          ||= 1;
+  config["Nº de Jueces para la presentación verbal"] ||= 0;
+  config["Nº de Jueces para el portfolio técnico"]   ||= 0;
+  config["Nº de Jueces para el portfolio de empresa"]||= 0;
+  config["Tiempo Eliminatorias"]                    ||= 0;
+
+  // 2.1) Duración de cada carrera y cálculo de “Reserva Eliminatorias”
+  //     Se asume 10 min por carrera y que la clave "Nº de equipos que se clasifican"
+  //     viene en la Configuración.
+  config["Duración Carrera"] ||= 10;
+  const clasifican = Number(config["Nº de equipos que se clasifican"] || 0);
+  config["Tiempo Eliminatorias"] = clasifican * config["Duración Carrera"];
+
+  // 3) Días puros
+  config["Nº de Días"] ||= 1;
+  const dias: Date[] = [];
+  for (let d = 1; d <= config["Nº de Días"]; d++) {
+    let v = config[`Día ${d}`];
+    if (!(v instanceof Date)) v = new Date(v);
+    dias.push(v);
+  }
+  config.dias = dias;
+
+  // 4) Ventanas horarias
+  const windows: { start: Date; end: Date }[] = [];
+  for (let d = 1; d <= config["Nº de Días"]; d++) {
+    let s = config[`Inicio Día ${d}`];
+    let e = config[`Fin Día ${d}`];
+    if (!(s instanceof Date)) s = new Date(s);
+    if (!(e instanceof Date)) e = new Date(e);
+    windows.push({ start: s, end: e });
+  }
+  config.windows = windows;
+
+  // 5) Rounds por categoría (nº de carreras clasificatorias por equipo)
+  //    (estas claves ya existían: Carreras Entry, Development, Professional)
+  config.rounds = {
+    Entry:        Number(config["Carreras Entry"]      || 0),
+    Development:  Number(config["Carreras Development"]|| 0),
+    Professional: Number(config["Carreras Professional"]|| 0),
+  };
+
+  // 6) Lectura de los equipos desde la hoja "Equipos"
+  const equipos: any[] = [];
   for (let i = 1; i < equiposData.length; i++) {
     const row = equiposData[i];
-    if (row && row.length >= 3) {
-      const equipo = {
-        id: row[0],
-        nombre: row[1],
-        categoria: row[2],
-        horario: []
-      };
-      equipos.push(equipo);
-    }
+    if (!row || row.length < 3) continue;
+    equipos.push({
+      id:        row[0],
+      nombre:    row[1],
+      categoria: row[2] as 'Entry'|'Development'|'Professional',
+      horario:   [] as any[]
+    });
   }
 
   return { config, equipos };
