@@ -9,6 +9,7 @@ import {
   generarExcelJuez
 } from './output';
 import { Equipo, asignarHorarios, asignarHorariosJueces, Juez } from './timetable';
+import { generateHorarioHtml } from './html';
 
 document.addEventListener('DOMContentLoaded', () => {
   const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
@@ -18,27 +19,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!fileInput.files?.length) return;
     const reader = new FileReader();
     reader.onload = (e) => {
+      // Leer workbook
       const data     = new Uint8Array(e.target!.result as ArrayBuffer);
       const workbook = XLSX.read(data, { type: 'array' });
 
-      const confS = workbook.Sheets["Configuración"];
-      const eqS   = workbook.Sheets["Equipos"];
+      // Obtener hojas necesarias
+      const confS = workbook.Sheets['Configuración'];
+      const eqS   = workbook.Sheets['Equipos'];
       if (!confS || !eqS) {
         appDiv.innerHTML = "El Excel debe tener hojas 'Configuración' y 'Equipos'";
         return;
       }
 
-      // ── Cast para TS2322 ────────────────────────────────
-      const cfgArr = XLSX.utils.sheet_to_json(confS, { header:1, cellDates:true } as any) as any[][];
-      const eqArr  = XLSX.utils.sheet_to_json(eqS,   { header:1, cellDates:true } as any) as any[][];
-      // ─────────────────────────────────────────────────────
+      // Convertir a arrays
+      const cfgArr = XLSX.utils.sheet_to_json(confS, { header: 1, cellDates: true } as any) as any[][];
+      const eqArr  = XLSX.utils.sheet_to_json(eqS,   { header: 1, cellDates: true } as any) as any[][];
 
+      // Procesar datos de entrada
       const { config, equipos } = processInputData(cfgArr, eqArr) as {
         config: any,
         equipos: Equipo[]
       };
 
-      const windows = config.windows as { start: Date, end: Date }[];
+      // Dividir equipos por día
+      const windows = config.windows as { start: Date; end: Date }[];
       const days    = windows.length;
       const chunk   = Math.ceil(equipos.length / days);
       const porDia: Equipo[][] = [];
@@ -46,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         porDia.push(equipos.slice(i * chunk, (i + 1) * chunk));
       }
 
-      // Asignamos horarios por día (el último día genera la clausura)
+      // Asignar horarios de equipos
       const evalStarts: Date[] = [];
       porDia.forEach((eqs, i) => {
         const win       = windows[i];
@@ -55,19 +59,41 @@ document.addEventListener('DOMContentLoaded', () => {
         evalStarts.push(fin);
       });
 
-      // Generamos horarios de jueces
+      // Asignar horarios de jueces
       const jueces: Juez[] = asignarHorariosJueces(equipos, config, evalStarts);
 
-      // ── Render botones de descarga ───────────────────────
+      // Generar HTML del horario y abrir en nueva pestaña
+      const html = generateHorarioHtml(equipos);
+      const newWin = window.open();
+      if (newWin) {
+        newWin.document.write(html);
+        newWin.document.close();
+      }
+
+      // Renderizar botones de descarga en la app
       appDiv.innerHTML = '';
 
-      // Maestro de equipos
+      // Botón: Descargar HTML del horario
+      const btnHtml = document.createElement('button');
+      btnHtml.textContent = 'Descargar Horario (HTML)';
+      btnHtml.onclick = () => {
+        const blob = new Blob([html], { type: 'text/html' });
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href     = url;
+        a.download = 'horario.html';
+        a.click();
+        URL.revokeObjectURL(url);
+      };
+      appDiv.appendChild(btnHtml);
+
+      // Botón: Horario Maestro (Excel)
       const btnM = document.createElement('button');
-      btnM.textContent = "Descargar Horario Maestro";
+      btnM.textContent = 'Descargar Horario Maestro (XLSX)';
       btnM.onclick     = () => generarExcelMaster(equipos);
       appDiv.appendChild(btnM);
 
-      // Individual equipos
+      // Botones: Horario por Equipo
       const teamDiv = document.createElement('div');
       equipos.forEach(eq => {
         const b = document.createElement('button');
@@ -77,13 +103,13 @@ document.addEventListener('DOMContentLoaded', () => {
       });
       appDiv.appendChild(teamDiv);
 
-      // Maestro de jueces
+      // Botón: Horario Jueces Maestro (Excel)
       const btnJ = document.createElement('button');
-      btnJ.textContent = "Descargar Horario Jueces Maestro";
+      btnJ.textContent = 'Descargar Horario Jueces Maestro (XLSX)';
       btnJ.onclick     = () => generarExcelMasterJueces(jueces);
       appDiv.appendChild(btnJ);
 
-      // Individual jueces
+      // Botones: Horario por Juez
       const judgeDiv = document.createElement('div');
       jueces.forEach(j => {
         const b = document.createElement('button');
