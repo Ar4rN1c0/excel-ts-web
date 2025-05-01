@@ -30,10 +30,11 @@ async function generarDummyInput() {
   configSheet.addRow(['Carreras Professional', roundsProf]);
 
   // ----- Días y ventanas -----
+  // El Día 1 acaba a las 19:05 (antes era 19:00) para dar 5′ extra
   const days = [
-    { start: new Date(2025,5,17,16,0), end: new Date(2025,5,17,19,0) },
-    { start: new Date(2025,5,18, 9,0), end: new Date(2025,5,18,18,0) },
-    { start: new Date(2025,5,19, 9,0), end: new Date(2025,5,19,14,0) }
+    { start: new Date(2025, 5, 17, 16, 0), end: new Date(2025, 5, 17, 19, 5) },
+    { start: new Date(2025, 5, 18,  9, 0), end: new Date(2025, 5, 18, 18, 0) },
+    { start: new Date(2025, 5, 19,  9, 0), end: new Date(2025, 5, 19, 14, 0) }
   ];
   configSheet.addRow(['Nº de Días', days.length]);
   days.forEach((w, i) => {
