@@ -1,57 +1,44 @@
 // src/html.ts
-
 import { Equipo } from './timetable';
 
-const diasOrden = ['lunes','martes','miércoles','jueves','viernes','sábado','domingo'] as const;
-type Dia = typeof diasOrden[number];
-
-// asigna colores como en tu ejemplo Python
-const colors: Record<string,string> = {
-  'Equipo Entry 1': '#1f77b4',
-  'Equipo Entry 2': '#ff7f0e',
-  'Equipo Entry 3': '#2ca02c',
-  'Equipo Entry 4': '#d62728',
-  'Equipo Entry 5': '#9467bd',
-  'Equipo Development 1': '#8c564b',
-  'Equipo Development 2': '#e377c2',
-  'Equipo Development 3': '#7f7f7f',
-  'Equipo Development 4': '#bcbd22',
-  'Equipo Development 5': '#17becf',
-  'Equipo Professional 1': '#aec7e8',
-  'Equipo Professional 2': '#ffbb78',
-  'Equipo Professional 3': '#98df8a',
-  'Equipo Professional 4': '#ff9896',
-  'Equipo Professional 5': '#c5b0d5',
-  'Equipo Professional 6': '#c49c94',
-  'Equipo Professional 7': '#f7b6d2',
-};
+// Generar colores suaves únicos por equipo + actividad
+function softColor(seed: string): string {
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    hash = seed.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = hash % 360;
+  return `hsl(${h}, 70%, 85%)`;
+}
 
 interface Cell {
-  fecha: string;       // YYYY-MM-DD
-  dia: Dia;            // e.g. "martes"
-  hora: string;        // "HH:MM"
+  fecha: string;
+  dia: string;
+  hora: string;
   actividad: string;
   participantes: string[];
 }
 
 export function generateHorarioHtml(equipos: Equipo[]): string {
-  // 1) Aplanar todos los eventos en un map para agrupar participantes
-  const map = new Map<string,Cell>();
+  const map = new Map<string, Cell>();
   equipos.forEach(eq => {
     eq.horario.forEach(ev => {
       if (!ev.inicio) return;
       const d = new Date(ev.inicio);
-      const fecha = d.toISOString().slice(0,10);
-      const dia = d.toLocaleDateString('es-ES', { weekday: 'long' }) as Dia;
-      const hora = d.toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+      const fecha = d.toISOString().slice(0, 10);
+      const dia = d.toLocaleDateString('es-ES', { weekday: 'long' });
+      const hora = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
       const key = `${fecha}|${hora}|${ev.nombre}`;
       const cell = map.get(key);
       if (cell) {
-        if (!cell.participantes.includes(eq.nombre))
+        if (!cell.participantes.includes(eq.nombre)) {
           cell.participantes.push(eq.nombre);
+        }
       } else {
         map.set(key, {
-          fecha, dia, hora,
+          fecha,
+          dia,
+          hora,
           actividad: ev.nombre,
           participantes: [eq.nombre],
         });
@@ -59,61 +46,80 @@ export function generateHorarioHtml(equipos: Equipo[]): string {
     });
   });
 
-  // 2) Convertir a array y ordenar por hora y fecha
   const cells = Array.from(map.values());
-  cells.sort((a,b) => {
+  cells.sort((a, b) => {
+    if (a.fecha !== b.fecha) return a.fecha.localeCompare(b.fecha);
     if (a.hora !== b.hora) return a.hora.localeCompare(b.hora);
-    return a.fecha.localeCompare(b.fecha);
+    return a.actividad.localeCompare(b.actividad);
   });
 
-  // 3) Extraer lista de días presentes, en orden Lunes→Domingo
-  const diasPresentes = diasOrden.filter(d => cells.some(c => c.dia === d));
+  const fechas = Array.from(new Set(cells.map(c => c.fecha))).sort();
+  const columnas = fechas.map(f => ({
+    fecha: f,
+    dia: new Date(f).toLocaleDateString('es-ES', { weekday: 'long' })
+  }));
 
-  // 4) Construir HTML
+  const horas = Array.from(new Set(cells.map(c => c.hora))).sort((a, b) => {
+    const [ha, ma] = a.split(':').map(Number);
+    const [hb, mb] = b.split(':').map(Number);
+    return ha === hb ? ma - mb : ha - hb;
+  });
+
   let html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <style>
+    body { background: #fdfcfb; font-family: sans-serif; }
     table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-    th { background-color: #f2f2f2; }
+    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+    th { background: #f1f1f1; }
+    .event { margin-bottom: 4px; padding: 6px; border-radius: 4px; font-size: 0.9em; line-height: 1.2em; }
   </style>
 </head>
 <body>
+  <h2 style="text-align:center;">Horario</h2>
   <table>
-    <tr><th>Hora</th>${diasPresentes.map(d => `<th>${d}</th>`).join('')}</tr>
+    <tr>
+      <th>Hora</th>
+      ${columnas.map(c => `<th>${c.dia} ${c.fecha}</th>`).join('')}
+    </tr>
 `;
 
-  // 5) Todas las horas únicas en orden
-  const horas = Array.from(new Set(cells.map(c => c.hora))).sort();
-
   horas.forEach(hora => {
-    html += `    <tr><td><strong>${hora}</strong></td>\n`;
-    diasPresentes.forEach(dia => {
-      const cell = cells.find(c => c.hora === hora && c.dia === dia);
-      if (!cell) {
-        html += '      <td></td>\n';
+    html += `    <tr>\n      <td><strong>${hora}</strong></td>\n`;
+    columnas.forEach(({ fecha }) => {
+      const eventos = cells.filter(c => c.hora === hora && c.fecha === fecha);
+      if (eventos.length === 0) {
+        html += `      <td></td>\n`;
       } else {
-        const p = cell.participantes;
-        const act = `<strong>${cell.actividad}</strong><br/>`;
-        if (p.length === 1) {
-          const color = colors[p[0]] || '#ccc';
-          html += `      <td style="background-color:${color};">${act}${p[0]}</td>\n`;
-        } else if (p.length === 2) {
-          const c1 = colors[p[0]]||'#ccc';
-          const c2 = colors[p[1]]||'#999';
-          html += `      <td style="background:linear-gradient(to right, ${c1} 0%, ${c1} 50%, ${c2} 50%, ${c2} 100%);">${act}${p[0]} vs ${p[1]}</td>\n`;
-        } else {
-          html += `      <td>${act}${p.join(', ')}</td>\n`;
-        }
+        html += `      <td>\n`;
+        eventos.forEach(cell => {
+          const { actividad, participantes } = cell;
+          const label = `<strong>${actividad}</strong><br/>`;
+
+          if (participantes.length === 1) {
+            const color = softColor(participantes[0] + actividad);
+            html += `<div class="event" style="background:${color}">${label}${participantes[0]}</div>\n`;
+
+          } else if (participantes.length === 2) {
+            // Solo “vs” si la actividad es una carrera
+            const isCarrera = actividad.toLowerCase().includes('carrera');
+            const separator = isCarrera ? ' vs ' : ', ';
+            const c1 = softColor(participantes[0] + actividad);
+            const c2 = softColor(participantes[1] + actividad);
+            html += `<div class="event" style="background:linear-gradient(to right, ${c1} 0%, ${c1} 50%, ${c2} 50%, ${c2} 100%)">${label}${participantes[0]}${separator}${participantes[1]}</div>\n`;
+
+          } else {
+            html += `<div class="event" style="background:#f9f9f9; border: 1px solid #ccc">${label}${participantes.join(', ')}</div>\n`;
+          }
+        });
+        html += `      </td>\n`;
       }
     });
-    html += '    </tr>\n';
+    html += `    </tr>\n`;
   });
 
-  html += `  </table>
-</body>
-</html>`;
+  html += `  </table>\n</body>\n</html>`;
   return html;
 }

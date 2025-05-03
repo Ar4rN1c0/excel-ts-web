@@ -15,9 +15,12 @@ async function generarDummyInput() {
   configSheet.addRow(['Nº equipos de Entry',       numEntry]);
   configSheet.addRow(['Nº equipos de Development', numDevelopment]);
   configSheet.addRow(['Nº equipos de Professional',numProfessional]);
+  configSheet.addRow(['Nº de equipos que se clasifican',4]);
+
 
   configSheet.addRow(['Nº de Jueces para el portfolio técnico',  3]);
   configSheet.addRow(['Nº de Jueces para el portfolio de empresa',3]);
+  configSheet.addRow(['Nº de Jueces para el escrutinio',        3]);
   configSheet.addRow(['Nº de Jueces para la presentación verbal', 2]);
   configSheet.addRow(['Nº de personal para el registro',        2]);
 
