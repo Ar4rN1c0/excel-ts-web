@@ -1,124 +1,96 @@
-// src/main.ts
-import './style.css';
-import * as XLSX from 'xlsx';
-import { processInputData } from './excel';
-import {
-  generarExcelEquipo,
-  generarExcelMaster,
-  generarExcelMasterJueces,
-  generarExcelJuez
-} from './output';
-import { Equipo, asignarHorarios, asignarHorariosJueces, Juez } from './timetable';
-import { generateHorarioHtml } from './html';
+import { generateTeams } from "./helpers/generators/generateTeams";
+import { generateJudges } from "./helpers/generators/generateJudges";
+import "./style.css";
+import { generateMainView } from "./helpers/views/generateMainView";
+import { singleDaySchedule } from "./helpers/schedulers/singleDaySchedule";
+import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
+import {  Evento, GlobalConfig } from "./types/types";
+//import { generateInputView } from "./helpers/views/generateInputView";
 
-document.addEventListener('DOMContentLoaded', () => {
-  const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
-  const appDiv    = document.getElementById('app')!;
+document.body.innerHTML = "";
 
-  fileInput.addEventListener('change', () => {
-    if (!fileInput.files?.length) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      // Leer workbook
-      const data     = new Uint8Array(e.target!.result as ArrayBuffer);
-      const workbook = XLSX.read(data, { type: 'array' });
+const config: GlobalConfig = {
+  "Nº equipos de Entry": 10,
+  "Nº equipos de Development": 10,
+  "Nº equipos de Professional": 10,
+  "Nº de equipos que se clasifican": 4,
+  "Nº de Jueces para el portfolio técnico": 3,
+  "Nº de Jueces para el portfolio de empresa": 3,
+  "Nº de Jueces para el escrutinio": 3,
+  "Nº de Jueces para la presentación verbal": 2,
+  "Nº de personal para el registro": 2,
+  "Carreras Entry": 2,
+  "Carreras Development": 4,
+  "Carreras Professional": 4,
+  "NumberOfDays": 3,
+  "Dia 1 Start": "2025-06-17T07:00:00.000Z",
+  "Dia 1 End": "2025-06-17T17:00:00.000Z",
+  "Dia 2 Start": "2025-06-18T07:00:00.000Z",
+  "Dia 2 End": "2025-06-18T17:00:00.000Z",
+  "Dia 3 Start": "2025-06-19T07:00:00.000Z",
+  "Dia 3 End": "2025-06-19T17:00:00.000Z",
+  "Duración registro": 5,
+  "Duración Charla/Presentación": 30,
+  "Duración Montaje del Pit Display": 60,
+  "Duración Escrutinio Entry": 15,
+  "Duración Escrutinio Development": 20,
+  "Duración Escrutinio Professional": 25,
+  "Duración Portfolio Técnico Entry": 10,
+  "Duración Portfolio Técnico Development": 15,
+  "Duración Portfolio Técnico Professional": 15,
+  "Duración Portfolio Empresa Entry": 0,
+  "Duración Portfolio Empresa Development": 15,
+  "Duración Portfolio Empresa Professional": 15,
+  "Duración Presentación Verbal Entry": 15,
+  "Duración Ceremonia de Clausura y Premios": 60,
+  "Duración Carrera": 10,
+  "Tiempo Eliminatorias": 40,
+  "rounds": {
+      "Entry": 2,
+      "Development": 4,
+      "Professional": 4
+  }
+}
 
-      // Obtener hojas necesarias
-      const confS = workbook.Sheets['Configuración'];
-      const eqS   = workbook.Sheets['Equipos'];
-      if (!confS || !eqS) {
-        appDiv.innerHTML = "El Excel debe tener hojas 'Configuración' y 'Equipos'";
-        return;
-      }
+async function main() {
+  try {
+/*     const { config } = await generateInputView();
+    console.log({ ...config });
+ */
+    const numOfDays = config.NumberOfDays;
+    
+    const fechaInicio = new Date(config["Dia 1 Start"]!);
+    const fechaFin = new Date(config[`Dia ${numOfDays} End`]!);
 
-      // Convertir a arrays
-      const cfgArr = XLSX.utils.sheet_to_json(confS, { header: 1, cellDates: true } as any) as any[][];
-      const eqArr  = XLSX.utils.sheet_to_json(eqS,   { header: 1, cellDates: true } as any) as any[][];
+    console.log(fechaInicio);
+    console.log(fechaFin);
 
-      // Procesar datos de entrada
-      const { config, equipos } = processInputData(cfgArr, eqArr) as {
-        config: any,
-        equipos: Equipo[]
-      };
+    const entryTeams = generateTeams("Entry", config["Nº equipos de Entry"]);
+    const developmentTeams = generateTeams("Development", config["Nº equipos de Development"]);
+    const professionalTeams = generateTeams("Professional", config["Nº equipos de Professional"]);
 
-      // Dividir equipos por día
-      const windows = config.windows as { start: Date; end: Date }[];
-      const days    = windows.length;
-      const chunk   = Math.ceil(equipos.length / days);
-      const porDia: Equipo[][] = [];
-      for (let i = 0; i < days; i++) {
-        porDia.push(equipos.slice(i * chunk, (i + 1) * chunk));
-      }
+    const teams = [...entryTeams, ...developmentTeams, ...professionalTeams];
+    console.log("teams", teams);
 
-      // Asignar horarios de equipos
-      const evalStarts: Date[] = [];
-      porDia.forEach((eqs, i) => {
-        const win       = windows[i];
-        const isLastDay = (i === days - 1);
-        const fin       = asignarHorarios(eqs, config, win.start, win.end, isLastDay);
-        evalStarts.push(fin);
-      });
+    const judgesPortfolioTecnico = generateJudges("Portfolio Técnico", config["Nº de Jueces para el portfolio técnico"]);
+    const judgesPortfolioEmpresa = generateJudges("Portfolio de Empresa", config["Nº de Jueces para el portfolio de empresa"]);
+    const judgesVerbal = generateJudges("Presentación verbal", config["Nº de Jueces para la presentación verbal"]);
+    const judgesScrutiny = generateJudges("Escrutinio", config["Nº de Jueces para el escrutinio"]);
 
-      // Asignar horarios de jueces
-      const jueces: Juez[] = asignarHorariosJueces(equipos, config, evalStarts);
+    const judges = [...judgesPortfolioTecnico, ...judgesPortfolioEmpresa, ...judgesVerbal, ...judgesScrutiny];
 
-      // Generar HTML del horario y abrir en nueva pestaña
-      const html = generateHorarioHtml(equipos);
-      const newWin = window.open();
-      if (newWin) {
-        newWin.document.write(html);
-        newWin.document.close();
-      }
+    singleDaySchedule(teams, fechaInicio, fechaFin, judgesVerbal, judgesScrutiny, judgesPortfolioEmpresa, judgesPortfolioTecnico, config["Nº de personal para el registro"], config);
 
-      // Renderizar botones de descarga en la app
-      appDiv.innerHTML = '';
+    const eventos: Evento[] = [];
+    teams.forEach(team => { eventos.push(...team.horario) });
+    judges.forEach(judge => { assignJudgeSchedule(judge, eventos) });
 
-      // Botón: Descargar HTML del horario
-      const btnHtml = document.createElement('button');
-      btnHtml.textContent = 'Descargar Horario (HTML)';
-      btnHtml.onclick = () => {
-        const blob = new Blob([html], { type: 'text/html' });
-        const url  = URL.createObjectURL(blob);
-        const a    = document.createElement('a');
-        a.href     = url;
-        a.download = 'horario.html';
-        a.click();
-        URL.revokeObjectURL(url);
-      };
-      appDiv.appendChild(btnHtml);
+    document.body.innerHTML = '';  
 
-      // Botón: Horario Maestro (Excel)
-      const btnM = document.createElement('button');
-      btnM.textContent = 'Descargar Horario Maestro (XLSX)';
-      btnM.onclick     = () => generarExcelMaster(equipos);
-      appDiv.appendChild(btnM);
+    generateMainView(teams, judges); 
+  } catch (error) {
+    console.error('Hubo un error al procesar el archivo:', error);
+  }
+}
 
-      // Botones: Horario por Equipo
-      const teamDiv = document.createElement('div');
-      equipos.forEach(eq => {
-        const b = document.createElement('button');
-        b.textContent = eq.nombre;
-        b.onclick     = () => generarExcelEquipo(eq);
-        teamDiv.appendChild(b);
-      });
-      appDiv.appendChild(teamDiv);
-
-      // Botón: Horario Jueces Maestro (Excel)
-      const btnJ = document.createElement('button');
-      btnJ.textContent = 'Descargar Horario Jueces Maestro (XLSX)';
-      btnJ.onclick     = () => generarExcelMasterJueces(jueces);
-      appDiv.appendChild(btnJ);
-
-      // Botones: Horario por Juez
-      const judgeDiv = document.createElement('div');
-      jueces.forEach(j => {
-        const b = document.createElement('button');
-        b.textContent = `Juez ${j.tipo} ${j.id}`;
-        b.onclick     = () => generarExcelJuez(j);
-        judgeDiv.appendChild(b);
-      });
-      appDiv.appendChild(judgeDiv);
-    };
-    reader.readAsArrayBuffer(fileInput.files[0]);
-  });
-});
+main();

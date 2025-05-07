@@ -2,60 +2,79 @@
 import ExcelJS from 'exceljs';
 
 async function generarDummyInput() {
-  const workbook    = new ExcelJS.Workbook();
+  const workbook = new ExcelJS.Workbook();
   const configSheet = workbook.addWorksheet('Configuración');
-  configSheet.addRow(['Parámetro','Valor']);
+  configSheet.addRow(['Parámetro', 'Valor']);
 
   // ----- Parámetros base -----
-  const numEntry        = 5;
-  const numDevelopment  = 5;
-  const numProfessional = 7;
-  const totalEquipos    = numEntry + numDevelopment + numProfessional;
+  const numEntry = 10;
+  const numDevelopment = 10;
+  const numProfessional = 10;
+  const totalEquipos = numEntry + numDevelopment + numProfessional;
 
-  configSheet.addRow(['Nº equipos de Entry',       numEntry]);
+  configSheet.addRow(['Nº equipos de Entry', numEntry]);
   configSheet.addRow(['Nº equipos de Development', numDevelopment]);
-  configSheet.addRow(['Nº equipos de Professional',numProfessional]);
-  configSheet.addRow(['Nº de equipos que se clasifican',4]);
+  configSheet.addRow(['Nº equipos de Professional', numProfessional]);
+  configSheet.addRow(['Nº de equipos que se clasifican', 4]);
 
 
-  configSheet.addRow(['Nº de Jueces para el portfolio técnico',  3]);
-  configSheet.addRow(['Nº de Jueces para el portfolio de empresa',3]);
-  configSheet.addRow(['Nº de Jueces para el escrutinio',        3]);
+  configSheet.addRow(['Nº de Jueces para el portfolio técnico', 3]);
+  configSheet.addRow(['Nº de Jueces para el portfolio de empresa', 3]);
+  configSheet.addRow(['Nº de Jueces para el escrutinio', 3]);
   configSheet.addRow(['Nº de Jueces para la presentación verbal', 2]);
-  configSheet.addRow(['Nº de personal para el registro',        2]);
+  configSheet.addRow(['Nº de personal para el registro', 2]);
 
   // ----- Rounds por categoría (7 min) -----
   const roundsEntry = 2;
-  const roundsDev   = 4;
-  const roundsProf  = 4;
-  configSheet.addRow(['Carreras Entry',        roundsEntry]);
-  configSheet.addRow(['Carreras Development',  roundsDev]);
+  const roundsDev = 4;
+  const roundsProf = 4;
+  configSheet.addRow(['Carreras Entry', roundsEntry]);
+  configSheet.addRow(['Carreras Development', roundsDev]);
   configSheet.addRow(['Carreras Professional', roundsProf]);
 
   // ----- Días y ventanas -----
-  // El Día 1 acaba a las 19:05 (antes era 19:00) para dar 5′ extra
-  const days = [
-    { start: new Date(2025, 5, 17, 16, 0), end: new Date(2025, 5, 17, 19, 5) },
-    { start: new Date(2025, 5, 18,  9, 0), end: new Date(2025, 5, 18, 18, 0) },
-    { start: new Date(2025, 5, 19,  9, 0), end: new Date(2025, 5, 19, 14, 0) }
-  ];
-  configSheet.addRow(['Nº de Días', days.length]);
-  days.forEach((w, i) => {
-    configSheet.addRow([`Día ${i+1}`,        w.start]);
-    configSheet.addRow([`Inicio Día ${i+1}`, w.start]);
-    configSheet.addRow([`Fin Día ${i+1}`,    w.end  ]);
-  });
+  const day = {
+    start: new Date(2025, 5, 17, 9, 0),
+    end: new Date(2025, 5, 17, 19, 0)
+  };
+  
+  // Convert to local string to ensure you have the local time zone displayed
+// Ensure date conversion to ISO string for consistency
+const startDate = day.start.toISOString();
+const endDate = day.end.toISOString();
+console.log(startDate, endDate);
 
+configSheet.addRow(["StartDate", startDate]);
+configSheet.addRow(["EndDate", endDate]);
+configSheet.addRow(["Duración registro", 5])
+configSheet.addRow(["Duración Charla/Presentación", 30])
+configSheet.addRow(["Duración Montaje del Pit Display", 60])
+configSheet.addRow(["Duración Escrutinio Entry", 15])
+configSheet.addRow(["Duración Escrutinio Development", 20])
+configSheet.addRow(["Duración Escrutinio Professional", 25])
+configSheet.addRow(["Duración Portfolio Técnico Entry", 10])
+configSheet.addRow(["Duración Portfolio Técnico Development", 15])
+configSheet.addRow(["Duración Portfolio Técnico Professional", 15])
+configSheet.addRow(["Duración Portfolio Empresa Entry", 0])
+configSheet.addRow(["Duración Portfolio Empresa Development", 15])
+configSheet.addRow(["Duración Portfolio Empresa Professional", 15])
+configSheet.addRow(["Duración Presentación Verbal Entry", 10])
+configSheet.addRow(["Duración Presentación Verbal Entry", 15])
+configSheet.addRow(["Duración Presentación Verbal Entry", 15])
+configSheet.addRow(["Duración Ceremonia de Clausura y Premios", 60])
+
+
+  
   // ----- Equipos -----
   const eqSheet = workbook.addWorksheet('Equipos');
-  eqSheet.addRow(['ID','Nombre','Categoria']);
+  eqSheet.addRow(['ID', 'Nombre', 'Categoria']);
   let id = 1;
-  for (let i = 1; i <= numEntry;       i++, id++) eqSheet.addRow([id, `Equipo Entry ${i}`,       'Entry']);
+  for (let i = 1; i <= numEntry; i++, id++) eqSheet.addRow([id, `Equipo Entry ${i}`, 'Entry']);
   for (let i = 1; i <= numDevelopment; i++, id++) eqSheet.addRow([id, `Equipo Development ${i}`, 'Development']);
-  for (let i = 1; i <= numProfessional;i++, id++) eqSheet.addRow([id, `Equipo Professional ${i}`, 'Professional']);
+  for (let i = 1; i <= numProfessional; i++, id++) eqSheet.addRow([id, `Equipo Professional ${i}`, 'Professional']);
 
   await workbook.xlsx.writeFile('dummy-input.xlsx');
-  console.log(`dummy-input.xlsx generado con ${totalEquipos} equipos en ${days.length} días.`);
+  console.log(`dummy-input.xlsx generado con ${totalEquipos} equipos.`);
 }
 
 generarDummyInput().catch(console.error);
