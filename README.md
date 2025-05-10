@@ -135,12 +135,6 @@ Tests cover:
 
 ---
 
-## 🙌 Acknowledgements
-
-Built for a friend’s family, supporting **F1 in Schools** — an incredible program inspiring the next generation of engineers and innovators.
-
----
-
 ## 📜 License
 
 MIT

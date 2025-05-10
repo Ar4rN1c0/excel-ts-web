@@ -2,7 +2,7 @@ import { Equipo, GlobalConfig, Juez } from "../../types/types";
 import { assignClassificatoryRaces } from "../assigners/assignClassificatoryRaces";
 import { assignGlobalEvent } from "../assigners/assignGlobal";
 import { assignRegisters } from "../assigners/assignRegisters";
-import { assignSmallEvent } from "../assigners/assignSmallevent";
+import { assignSmallEvent } from "../assigners/assignSmallEvent";
 import { mins } from "../math/math";
 
 export function singleDaySchedule(

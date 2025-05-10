@@ -1,8 +1,7 @@
 import { Categoria, Equipo, RaceConfig, Evento } from "../../types/types";
 import { hasCollision } from "../math/check";
 import { generateUnsortedRacesByCategory } from "../generators/generateRaces";
-import { getAvailableWindows } from "../math/windows";
-import { mins } from "../math/math";
+import { findFirstSharedWindow, getAvailableWindows } from "../math/windows";
 
 interface UnsortedRace {
   team1: Equipo;
@@ -78,20 +77,3 @@ export const assignClassificatoryRaces = (
   return allRaces;
 };
 
-// Función auxiliar para encontrar la primera ventana compartida
-const findFirstSharedWindow = (
-  windows1: [Date, Date][],
-  windows2: [Date, Date][],
-  duration: number
-): [Date, Date] | null => {
-  for (const [start1, end1] of windows1) {
-    for (const [start2, end2] of windows2) {
-      const start = new Date(Math.max(start1.getTime(), start2.getTime()));
-      const end = new Date(start.getTime() + mins(duration));
-      if (end.getTime() <= Math.min(end1.getTime(), end2.getTime())) {
-        return [start, end];
-      }
-    }
-  }
-  return null;
-};

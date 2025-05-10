@@ -1,7 +1,9 @@
 import { Equipo, GlobalConfig, Juez } from "../../types/types";
 import { assignClassificatoryRaces } from "../assigners/assignClassificatoryRaces";
 import { assignGlobalEvent } from "../assigners/assignGlobal";
-import { assignSmallEvent } from "../assigners/assignSmallevent";
+import { assignSmallEvent } from "../assigners/assignSmallEvent";
+import { assignSmallDistributed } from "../assigners/distributed/assignSmallDistributed";
+import { assignDistributedRaces } from "../assigners/distributed/assingRacesDistributed";
 import { mins } from "../math/math";
 
 export function multipleDaySchedule(
@@ -82,7 +84,7 @@ export function multipleDaySchedule(
         { Entry: 0 }
     );
 
-    assignClassificatoryRaces(teams, {
+    assignDistributedRaces(teams, {
         duration: 10,
         heatsPerCategory: {
             Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
@@ -92,7 +94,7 @@ export function multipleDaySchedule(
     }, startPrices);
 
     try {
-        assignSmallEvent(
+        assignSmallDistributed(
             teams,
             endPitDisplay,
             startPrices,
@@ -105,7 +107,7 @@ export function multipleDaySchedule(
             "Portfolio Técnico"
         );
 
-        assignSmallEvent(
+        assignSmallDistributed(
             teams,
             endPitDisplay,
             startPrices,
@@ -118,7 +120,7 @@ export function multipleDaySchedule(
             "Portfolio de empresa"
         );
 
-        assignSmallEvent(
+        assignSmallDistributed(
             teams,
             endPitDisplay,
             startPrices,
