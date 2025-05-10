@@ -1,5 +1,5 @@
 import { Equipo, Evento } from "../../types/types"
-import { mins } from "../math"
+import { mins } from "../math/math"
 
 export const assignGlobalEvent = (name: string, startDate: Date, duration: number, teams: Equipo[]) => {
     const globalEvent: Evento = {

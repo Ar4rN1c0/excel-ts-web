@@ -2,9 +2,11 @@ import { generateTeams } from "./helpers/generators/generateTeams";
 import { generateJudges } from "./helpers/generators/generateJudges";
 import "./style.css";
 import { generateMainView } from "./helpers/views/generateMainView";
-import { singleDaySchedule } from "./helpers/schedulers/singleDaySchedule";
+//import { singleDaySchedule } from "./helpers/schedulers/singleDaySchedule";
 import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
-import {  Evento, GlobalConfig } from "./types/types";
+import { Evento, GlobalConfig } from "./types/types";
+import { multipleDaySchedule } from "./helpers/schedulers/multipleDaySchedule";
+import { getGlobalWindows } from "./helpers/math/windows";
 //import { generateInputView } from "./helpers/views/generateInputView";
 
 document.body.innerHTML = "";
@@ -24,9 +26,9 @@ const config: GlobalConfig = {
   "Carreras Professional": 4,
   "NumberOfDays": 3,
   "Dia 1 Start": "2025-06-17T07:00:00.000Z",
-  "Dia 1 End": "2025-06-17T17:00:00.000Z",
+  "Dia 1 End": "2025-06-17T12:00:00.000Z",
   "Dia 2 Start": "2025-06-18T07:00:00.000Z",
-  "Dia 2 End": "2025-06-18T17:00:00.000Z",
+  "Dia 2 End": "2025-06-18T10:00:00.000Z",
   "Dia 3 Start": "2025-06-19T07:00:00.000Z",
   "Dia 3 End": "2025-06-19T17:00:00.000Z",
   "Duración registro": 5,
@@ -42,23 +44,25 @@ const config: GlobalConfig = {
   "Duración Portfolio Empresa Development": 15,
   "Duración Portfolio Empresa Professional": 15,
   "Duración Presentación Verbal Entry": 15,
+  "Duración Presentación Verbal Development": 15,
+  "Duración Presentación Verbal Professional": 15,
   "Duración Ceremonia de Clausura y Premios": 60,
   "Duración Carrera": 10,
   "Tiempo Eliminatorias": 40,
   "rounds": {
-      "Entry": 2,
-      "Development": 4,
-      "Professional": 4
+    "Entry": 2,
+    "Development": 4,
+    "Professional": 4
   }
 }
 
 async function main() {
   try {
-/*     const { config } = await generateInputView();
-    console.log({ ...config });
- */
+    /*     const { config }: {config: GlobalConfig} = await generateInputView();
+        console.log({ ...config });
+     */
     const numOfDays = config.NumberOfDays;
-    
+
     const fechaInicio = new Date(config["Dia 1 Start"]!);
     const fechaFin = new Date(config[`Dia ${numOfDays} End`]!);
 
@@ -70,7 +74,6 @@ async function main() {
     const professionalTeams = generateTeams("Professional", config["Nº equipos de Professional"]);
 
     const teams = [...entryTeams, ...developmentTeams, ...professionalTeams];
-    console.log("teams", teams);
 
     const judgesPortfolioTecnico = generateJudges("Portfolio Técnico", config["Nº de Jueces para el portfolio técnico"]);
     const judgesPortfolioEmpresa = generateJudges("Portfolio de Empresa", config["Nº de Jueces para el portfolio de empresa"]);
@@ -79,15 +82,17 @@ async function main() {
 
     const judges = [...judgesPortfolioTecnico, ...judgesPortfolioEmpresa, ...judgesVerbal, ...judgesScrutiny];
 
-    singleDaySchedule(teams, fechaInicio, fechaFin, judgesVerbal, judgesScrutiny, judgesPortfolioEmpresa, judgesPortfolioTecnico, config["Nº de personal para el registro"], config);
+    const windows = getGlobalWindows(config)
 
-    const eventos: Evento[] = [];
-    teams.forEach(team => { eventos.push(...team.horario) });
-    judges.forEach(judge => { assignJudgeSchedule(judge, eventos) });
+    multipleDaySchedule(teams, windows, judgesVerbal, judgesScrutiny, judgesPortfolioEmpresa, judgesPortfolioTecnico, config["Nº de personal para el registro"], config);
 
-    document.body.innerHTML = '';  
+    const eventos: Evento[] = teams.flatMap(team => team.horario);
+    judges.forEach(judge => assignJudgeSchedule(judge, eventos));
 
-    generateMainView(teams, judges); 
+
+    document.body.innerHTML = '';
+
+    generateMainView(teams, judges);
   } catch (error) {
     console.error('Hubo un error al procesar el archivo:', error);
   }

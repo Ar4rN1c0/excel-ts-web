@@ -59,8 +59,8 @@ configSheet.addRow(["Duración Portfolio Empresa Entry", 0])
 configSheet.addRow(["Duración Portfolio Empresa Development", 15])
 configSheet.addRow(["Duración Portfolio Empresa Professional", 15])
 configSheet.addRow(["Duración Presentación Verbal Entry", 10])
-configSheet.addRow(["Duración Presentación Verbal Entry", 15])
-configSheet.addRow(["Duración Presentación Verbal Entry", 15])
+configSheet.addRow(["Duración Presentación Verbal Development", 15])
+configSheet.addRow(["Duración Presentación Verbal Professional", 15])
 configSheet.addRow(["Duración Ceremonia de Clausura y Premios", 60])
 
 

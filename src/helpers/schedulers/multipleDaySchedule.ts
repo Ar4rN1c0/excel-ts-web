@@ -1,14 +1,12 @@
 import { Equipo, GlobalConfig, Juez } from "../../types/types";
 import { assignClassificatoryRaces } from "../assigners/assignClassificatoryRaces";
 import { assignGlobalEvent } from "../assigners/assignGlobal";
-import { assignRegisters } from "../assigners/assignRegisters";
 import { assignSmallEvent } from "../assigners/assignSmallevent";
 import { mins } from "../math/math";
 
-export function singleDaySchedule(
+export function multipleDaySchedule(
     teams: Equipo[],
-    startDate: Date,
-    endDate: Date,
+    windows: Date[][],
     judgesVerbal: Juez[],
     judgesScrutiny: Juez[],
     judgesPortfolioEmpresa: Juez[],
@@ -16,10 +14,45 @@ export function singleDaySchedule(
     personelRegister: number,
     config: GlobalConfig
 ) {
-    const startPrices = new Date(endDate.getTime() - mins(90));
+    const numOfDays = config.NumberOfDays;
+    // time by which ALL registration _and_ small events must finish:
+    const startPrices = new Date(
+        windows[numOfDays - 1][1].getTime() - mins(90)
+    );
 
-    const endRegisterDate = assignRegisters(startDate, 5, teams, personelRegister) as Date;
+    // 1) Pre‐seed all the “Descanso” slots _first_ (so they’re in every team.horario)
+    for (let i = 0; i < windows.length - 1; i++) {
+        const endCurrent = windows[i][1];
+        const startNext = windows[i + 1][0];
+        if (endCurrent < startNext) {
+            assignGlobalEvent(
+                "Descanso",
+                endCurrent,
+                (startNext.getTime() - endCurrent.getTime()) / 60000,
+                teams
+            );
+        }
+    }
 
+    // 2) Now schedule _all_ the 5-minute “Registro” slots into whatever gaps remain—
+    //    spanning from the very first window’s start up to startPrices.
+    const registroDurations = {
+        Entry: 5,
+        Development: 5,
+        Professional: 5
+    };
+
+    const endRegisterDate = assignSmallEvent(
+        teams,
+        windows[0][0],   // from Day 1 start
+        startPrices,     // until just before the “startPrices” cutoff
+        personelRegister,// how many counters in parallel
+        registroDurations,
+        "Registro"
+    ) as Date;
+
+
+    // 3) The rest of your global events
     const endCharla = assignGlobalEvent(
         "Charla/Presentación",
         endRegisterDate,
@@ -34,6 +67,7 @@ export function singleDaySchedule(
         teams
     ) as Date;
 
+    // 4) All the concurrent small events (Scrutiny, Portfolios, Verbal)
     assignSmallEvent(
         teams,
         endRegisterDate,
@@ -45,9 +79,7 @@ export function singleDaySchedule(
             Professional: config["Duración Escrutinio Professional"]
         },
         "Escrutinio",
-        {
-            Entry: 0,
-        }
+        { Entry: 0 }
     );
 
     assignClassificatoryRaces(teams, {
@@ -56,7 +88,7 @@ export function singleDaySchedule(
             Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
             Development: { max: 2, min: 2 },
             Professional: { max: 2, min: 2 }
-        }
+        },
     }, startPrices);
 
     try {
@@ -102,6 +134,7 @@ export function singleDaySchedule(
         console.error(error);
     }
 
+    // 5) Finally, closing ceremony
     assignGlobalEvent(
         "Ceremonia de Clausura y Premios",
         startPrices,

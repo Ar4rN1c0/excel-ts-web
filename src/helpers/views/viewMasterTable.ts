@@ -41,7 +41,7 @@ export function generateScheduleTable(equipos: Equipo[]): string {
             {} as Record<string, GroupedEvento>,
         ),
     )
-
+    groupedEventos.filter(ev => ev.nombre !== "Descanso ")
     if (groupedEventos.length === 0) {
         return "<div>No hay eventos programados.</div>"
     }

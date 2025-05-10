@@ -1,4 +1,4 @@
-import { getAvailableWindows } from "../src/helpers/math";
+import { getAvailableWindows } from "../src/helpers/math/windows";
 import { Evento } from "../src/types/types";
 
 const evento = (start: string, end: string): Evento => ({
@@ -43,7 +43,6 @@ describe("getAvailableWindows", () => {
         const esperadas = [
             [new Date("2025-06-17T09:00:00"), new Date("2025-06-17T09:10:00")],
             [new Date("2025-06-17T09:01:00"), new Date("2025-06-17T09:11:00")],
-            // ...
             [new Date("2025-06-17T09:10:00"), new Date("2025-06-17T09:20:00")],
             [new Date("2025-06-17T09:40:00"), new Date("2025-06-17T09:50:00")],
             [new Date("2025-06-17T09:41:00"), new Date("2025-06-17T09:51:00")],
@@ -69,4 +68,55 @@ describe("getAvailableWindows", () => {
         expect(ventanas[1]).toEqual([new Date("2025-06-17T09:50:00"), new Date("2025-06-17T10:00:00")]);
     });
 
+    // MULTI-DAY TEST CASES
+
+    it("maneja eventos que cruzan la medianoche", () => {
+        const intervaloInicio = new Date("2025-06-17T22:00:00");
+        const intervaloFin = new Date("2025-06-18T02:00:00");
+
+        const eventos: Evento[] = [evento("2025-06-17T23:00:00", "2025-06-18T00:30:00")];
+
+        const ventanas = getAvailableWindows(intervaloInicio, intervaloFin, eventos, 30);
+
+        expect(ventanas[0]).toEqual([new Date("2025-06-17T22:00:00"), new Date("2025-06-17T22:30:00")]);
+        expect(ventanas[ventanas.length - 1]).toEqual([new Date("2025-06-18T01:30:00"), new Date("2025-06-18T02:00:00")]);
+        expect(ventanas.length).toBeGreaterThan(0);
+    });
+
+    it("devuelve ventanas válidas entre múltiples eventos distribuidos en días consecutivos", () => {
+        const intervaloInicio = new Date("2025-06-17T21:00:00");
+        const intervaloFin = new Date("2025-06-18T03:00:00");
+
+        const eventos: Evento[] = [
+            evento("2025-06-17T22:00:00", "2025-06-17T22:30:00"),
+            evento("2025-06-17T23:30:00", "2025-06-18T00:30:00"),
+            evento("2025-06-18T01:00:00", "2025-06-18T01:15:00"),
+        ];
+
+        const ventanas = getAvailableWindows(intervaloInicio, intervaloFin, eventos, 15);
+
+        // Check that we get windows from:
+        // - 21:00 to 22:00
+        // - 22:30 to 23:30
+        // - 00:30 to 01:00
+        // - 01:15 to 03:00
+
+        expect(ventanas.length).toBeGreaterThan(0);
+        expect(ventanas.some(([start, _]) => start.getTime() === new Date("2025-06-17T21:00:00").getTime())).toBeTruthy();
+        expect(ventanas.some(([start, _]) => start.getTime() === new Date("2025-06-18T01:15:00").getTime())).toBeTruthy();
+    });
+
+    it("maneja múltiples eventos encadenados sin huecos", () => {
+        const intervaloInicio = new Date("2025-06-17T20:00:00");
+        const intervaloFin = new Date("2025-06-18T01:00:00");
+
+        const eventos: Evento[] = [
+            evento("2025-06-17T20:00:00", "2025-06-17T21:00:00"),
+            evento("2025-06-17T21:00:00", "2025-06-17T23:00:00"),
+            evento("2025-06-17T23:00:00", "2025-06-18T01:00:00"),
+        ];
+
+        const ventanas = getAvailableWindows(intervaloInicio, intervaloFin, eventos, 15);
+        expect(ventanas.length).toBe(0); // No hay huecos entre eventos
+    });
 });

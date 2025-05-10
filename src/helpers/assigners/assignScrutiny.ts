@@ -1,5 +1,5 @@
 import { Equipo, Evento, DurationMap } from "../../types/types";
-import { mins } from "../math";
+import { mins } from "../math/math";
 
 export const assignScrutiny = (
   teams: Equipo[],

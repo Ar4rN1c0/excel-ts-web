@@ -1,5 +1,5 @@
 import { Equipo, Evento } from "../../types/types";
-import { mins } from "../math";
+import { mins } from "../math/math";
 
 export const assignRegisters = (startDate: Date, registerTime: number, teams: Equipo[], maxConcurrent: number) => {
   let currentStart = startDate;

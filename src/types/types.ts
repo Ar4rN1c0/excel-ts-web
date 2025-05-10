@@ -79,6 +79,8 @@ interface StaticConfig {
   "Duración Portfolio Empresa Development": number;
   "Duración Portfolio Empresa Professional": number;
   "Duración Presentación Verbal Entry": number;
+  "Duración Presentación Verbal Development": number;
+  "Duración Presentación Verbal Professional": number;
   "Duración Ceremonia de Clausura y Premios": number;
   "Duración Carrera": number;
   "Tiempo Eliminatorias": number;
@@ -91,3 +93,7 @@ interface StaticConfig {
 
 // Tipo final combinando estructura fija y campos dinámicos
 export type GlobalConfig = StaticConfig & DynamicDayFields;
+
+export type Priorities = {
+  [K in Categoria]?: number;
+};
