@@ -7,11 +7,11 @@ import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
 import { Evento, GlobalConfig } from "./types/types";
 import { multipleDaySchedule } from "./helpers/schedulers/multipleDaySchedule";
 import { getGlobalWindows } from "./helpers/math/windows";
-//import { generateInputView } from "./helpers/views/generateInputView";
+import { generateInputView } from "./helpers/views/generateInputView";
 
 document.body.innerHTML = "";
 
-const config: GlobalConfig = {
+export const dummyConfig: GlobalConfig = {
   "Nº equipos de Entry": 10,
   "Nº equipos de Development": 10,
   "Nº equipos de Professional": 10,
@@ -58,9 +58,9 @@ const config: GlobalConfig = {
 
 async function main() {
   try {
-    /*     const { config }: {config: GlobalConfig} = await generateInputView();
-        console.log({ ...config });
-     */
+    const { config }: { config: GlobalConfig } = await generateInputView();
+    console.log({ ...config });
+
     const numOfDays = config.NumberOfDays;
 
     const fechaInicio = new Date(config["Dia 1 Start"]!);

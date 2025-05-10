@@ -27,7 +27,7 @@ This project is a complete scheduling system for organizing and managing **multi
 
 ## 📁 Project Structure
 
-\`\`\`
+```
 src/
 │
 ├── helpers/
@@ -40,7 +40,7 @@ src/
 ├── style.css            # Basic responsive styling for UI
 ├── index.ts             # Main entry point
 └── excel/               # Excel export and input parsing
-\`\`\`
+```
 
 ---
 
@@ -48,36 +48,36 @@ src/
 
 ### 1. Install Dependencies
 
-\`\`\`bash
+```bash
 pnpm i
-\`\`\`
+```
 
 ### 2. Run the Scheduler
 
 You can either run it directly via a static server or bundle it:
 
-\`\`\`bash
+```bash
 node --run dev
 # or
 pnpm dev
-\`\`\`
+```
 
 ### 3. Import Config from Excel (Optional)
 
-You can upload a \`.xlsx\` file to load team/event configuration dynamically. Use the included \`dummy-input.xlsx\` generator for testing:
+You can upload a `.xlsx` file to load team/event configuration dynamically. Use the included \`dummy-input.xlsx\` generator for testing:
 
-\`\`\`bash
+```bash
 node scripts/generate.js
-\`\`\`
+```
 
 ---
 
-## 🧾 File: \`dummy-input.xlsx\`
+## 🧾 File: `dummy-input.xlsx`
 
 This contains:
 
-- A \`Configuración\` sheet (parameters, durations, dates)
-- An \`Equipos\` sheet (list of teams and categories)
+- A `Configuración` sheet (parameters, durations, dates)
+- An `Equipos` sheet (list of teams and categories)
 
 You can edit this manually or regenerate it using the script above.
 
@@ -110,9 +110,9 @@ After running the script:
 
 To run tests:
 
-\`\`\`bash
+```bash
 npm test
-\`\`\`
+```
 
 Tests cover:
 - Time-window extraction
@@ -124,14 +124,14 @@ Tests cover:
 
 ## 📅 Example Event Duration Config
 
-\`\`\`json
+\\\json
 {
   "Duración registro": 5,
   "Duración Escrutinio Entry": 15,
   "Duración Portfolio Técnico Professional": 15,
   "Duración Presentación Verbal Entry": 10
 }
-\`\`\`
+\\\
 
 ---
 

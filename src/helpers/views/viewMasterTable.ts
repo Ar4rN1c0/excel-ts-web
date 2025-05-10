@@ -20,73 +20,78 @@ interface GroupedEvento {
 }
 
 export function generateScheduleTable(equipos: Equipo[]): string {
-    console.log(equipos)
-    const groupedEventos: GroupedEvento[] = Object.values(
-        equipos.reduce(
-            (acc, equipo) => {
-                equipo.horario.forEach((evento: Evento) => {
-                    const key = `${evento.start.toISOString()}-${evento.end.toISOString()}-${evento.nombre}`
-                    if (!acc[key]) {
-                        acc[key] = {
-                            start: evento.start,
-                            end: evento.end,
-                            nombre: evento.nombre,
-                            participantes: [],
-                        }
-                    }
-                    acc[key].participantes.push(equipo)
-                })
-                return acc
-            },
-            {} as Record<string, GroupedEvento>,
-        ),
-    )
-    groupedEventos.filter(ev => ev.nombre !== "Descanso ")
-    if (groupedEventos.length === 0) {
-        return "<div>No hay eventos programados.</div>"
-    }
+  const groupedEventos: GroupedEvento[] = Object.values(
+      equipos.reduce((acc, equipo) => {
+          equipo.horario.forEach((evento: Evento) => {
+              const key = `${evento.start.toISOString()}-${evento.end.toISOString()}-${evento.nombre}`
+              if (!acc[key]) {
+                  acc[key] = {
+                      start: evento.start,
+                      end: evento.end,
+                      nombre: evento.nombre,
+                      participantes: [],
+                  }
+              }
+              acc[key].participantes.push(equipo)
+          })
+          return acc
+      }, {} as Record<string, GroupedEvento>)
+  )
 
-    groupedEventos.sort((a, b) => a.start.getTime() - b.start.getTime())
+  if (groupedEventos.length === 0) {
+      return "<div>No hay eventos programados.</div>"
+  }
 
-    console.log(groupedEventos)
+  groupedEventos.sort((a, b) => a.start.getTime() - b.start.getTime())
 
-
-    // Generate the HTML table
-    let html = `
-    <table border="1" cellpadding="10" cellspacing="0">
-      <thead>
-        <tr>
-          <th>Nombre del Evento</th>
-          <th>Hora de Inicio</th>
-          <th>Hora de Fin</th>
-          <th>Participantes</th>
-        </tr>
-      </thead>
-      <tbody>
-  `
-
-    groupedEventos.forEach((evento) => {
-        const startTime = formatDateTime(evento.start)
-        const endTime = formatDateTime(evento.end)
-
-        html += `
+  let html = `
+  <table border="1" cellpadding="10" cellspacing="0">
+    <thead>
       <tr>
-        <td>${evento.nombre}</td>
-        <td>${startTime}</td>
-        <td>${endTime}</td>
-        <td>
-          ${evento.participantes
-                .map((equipo) => `${equipo.nombre}`)
-                .join("<br />")}
-        </td>
+        <th>Nombre del Evento</th>
+        <th>Hora de Inicio</th>
+        <th>Hora de Fin</th>
+        <th>Participantes</th>
       </tr>
-    `
-    })
+    </thead>
+    <tbody>
+`
 
-    html += `
-      </tbody>
-    </table>
-  `
+  groupedEventos.forEach((evento) => {
+      if (evento.nombre === "Descanso") {
+          const dia = new Date(evento.start)
+          dia.setDate(dia.getDate() - 1) // Día que termina
+          const formattedDay = formatDateTime(dia).split(" ")[0] + " " + formatDateTime(dia).split(" ")[1]
+          html += `
+            <tr>
+              <td colspan="4" style="text-align: center; font-weight: bold;">
+                Fin del día: ${formattedDay}
+              </td>
+            </tr>
+          `
+      } else {
+          const startTime = formatDateTime(evento.start)
+          const endTime = formatDateTime(evento.end)
 
-    return html
+          html += `
+            <tr>
+              <td>${evento.nombre}</td>
+              <td>${startTime}</td>
+              <td>${endTime}</td>
+              <td>
+                ${evento.participantes
+                    .map((equipo) => `${equipo.nombre}`)
+                    .join("<br />")}
+              </td>
+            </tr>
+          `
+      }
+  })
+
+  html += `
+    </tbody>
+  </table>
+`
+
+  return html
 }

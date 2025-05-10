@@ -5,13 +5,14 @@ import { Equipo, Juez, Evento } from '../../types/types'; // Corregida la ruta d
 export async function generarExcelEquipo(equipo: Equipo) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Horario');
-  
+
   // Encabezados con estilo
   ws.addRow(['Actividad', 'Duración (min)', 'Inicio', 'Fin']);
   ws.getRow(1).font = { bold: true };
-  
+
   // Datos ordenados por hora de inicio
   equipo.horario
+    .filter(ev => ev.nombre !== "Descanso")
     .sort((a: Evento, b: Evento) => a.start.getTime() - b.start.getTime())
     .forEach((ev: Evento) => {
       ws.addRow([
@@ -21,7 +22,7 @@ export async function generarExcelEquipo(equipo: Equipo) {
         formatDateTime(ev.end)
       ]);
     });
-  
+
   // Autoajustar columnas con tipado seguro
   ws.columns.forEach(column => {
     if (column.values) {
@@ -32,19 +33,20 @@ export async function generarExcelEquipo(equipo: Equipo) {
       column.width = Math.max(15, maxLength);
     }
   });
-  
+
   await downloadWorkbook(wb, `Equipo_${equipo.nombre}_Horario.xlsx`);
 }
 
 export async function generarExcelMaster(equipos: Equipo[]) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Horario Maestro');
-  
+
   ws.addRow(['Equipo', 'Categoría', 'Actividad', 'Duración (min)', 'Inicio', 'Fin']);
   ws.getRow(1).font = { bold: true };
-  
+
   equipos.forEach(equipo => {
     equipo.horario
+      .filter(ev => ev.nombre !== "Descanso")
       .sort((a: Evento, b: Evento) => a.start.getTime() - b.start.getTime())
       .forEach((ev: Evento) => {
         ws.addRow([
@@ -57,7 +59,7 @@ export async function generarExcelMaster(equipos: Equipo[]) {
         ]);
       });
   });
-  
+
   // Autoajustar columnas con tipado seguro
   ws.columns.forEach(column => {
     if (column.values) {
@@ -68,19 +70,20 @@ export async function generarExcelMaster(equipos: Equipo[]) {
       column.width = Math.max(15, maxLength);
     }
   });
-  
+
   await downloadWorkbook(wb, 'Horario_Maestro.xlsx');
 }
 
 export async function generarExcelMasterJueces(jueces: Juez[]) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Horario Jueces');
-  
+
   ws.addRow(['Juez', 'Tipo', 'Actividad', 'Duración (min)', 'Inicio', 'Fin']);
   ws.getRow(1).font = { bold: true };
-  
+
   jueces.forEach(juez => {
     juez.horario
+      .filter(ev => ev.nombre !== "Descanso")
       .sort((a: Evento, b: Evento) => a.start.getTime() - b.start.getTime())
       .forEach((ev: Evento) => {
         ws.addRow([
@@ -93,7 +96,7 @@ export async function generarExcelMasterJueces(jueces: Juez[]) {
         ]);
       });
   });
-  
+
   // Autoajustar columnas con tipado seguro
   ws.columns.forEach(column => {
     if (column.values) {
@@ -104,17 +107,17 @@ export async function generarExcelMasterJueces(jueces: Juez[]) {
       column.width = Math.max(15, maxLength);
     }
   });
-  
+
   await downloadWorkbook(wb, 'Horario_Jueces_Maestro.xlsx');
 }
 
 export async function generarExcelJuez(juez: Juez) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Horario');
-  
+
   ws.addRow(['Actividad', 'Duración (min)', 'Inicio', 'Fin']);
   ws.getRow(1).font = { bold: true };
-  
+
   juez.horario
     .sort((a: Evento, b: Evento) => a.start.getTime() - b.start.getTime())
     .forEach((ev: Evento) => {
@@ -125,7 +128,7 @@ export async function generarExcelJuez(juez: Juez) {
         formatDateTime(ev.end)
       ]);
     });
-  
+
   // Autoajustar columnas con tipado seguro
   ws.columns.forEach(column => {
     if (column.values) {
@@ -136,7 +139,7 @@ export async function generarExcelJuez(juez: Juez) {
       column.width = Math.max(15, maxLength);
     }
   });
-  
+
   await downloadWorkbook(wb, `Juez_${juez.tipo}_${juez.id}_Horario.xlsx`);
 }
 
@@ -162,7 +165,7 @@ function formatActivityName(activityType: string, teamName: string): string {
     'Juzgar Portfolio de Empresa': 'Evaluación Portfolio Empresa',
     'Juzgar Presentación verbal': 'Evaluación Presentación Verbal'
   };
-  
+
   return activityNames[activityType] || activityType;
 }
 
