@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';  // Asegúrate de instalar la librería XLSX con `npm install xlsx`
-import { processInputData } from '../excel/excel'; // Importamos la función processInputData desde excel.ts
-import { Equipo } from '../../types/types';
+import { processInputData } from '../helpers/excel/excel'; // Importamos la función processInputData desde excel.ts
+import { Equipo } from '../types/types';
 
 // Tipos para los datos procesados
 interface ProcessedData {

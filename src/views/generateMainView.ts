@@ -1,5 +1,5 @@
-import { Equipo, Juez } from "../../types/types";
-import { generarExcelEquipo, generarExcelJuez, generarExcelMaster } from "../excel/output";
+import { Equipo, Juez } from "../types/types";
+import { generarExcelEquipo, generarExcelJuez, generarExcelMaster } from "../helpers/excel/output";
 import { generateScheduleTable } from "./viewMasterTable";
 //import { generateScheduleHTML } from "./masterSchedule";
 

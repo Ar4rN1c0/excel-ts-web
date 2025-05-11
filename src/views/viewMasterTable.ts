@@ -1,4 +1,4 @@
-import type { Equipo, Evento } from "../../types/types"
+import type { Equipo, Evento } from "../types/types"
 
 export function formatDateTime(date: Date): string {
   const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
