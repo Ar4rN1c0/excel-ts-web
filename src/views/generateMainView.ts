@@ -59,7 +59,7 @@ export function generateMainView(teams: Equipo[], judges: Juez[]) {
     // Crear botones de descarga para cada juez
     judges.forEach((juez) => {
         const botonJuez = document.createElement("button");
-        botonJuez.textContent = `Descargar Horario Juez ${juez.id} (${juez.tipo}) en Excel`;
+        botonJuez.textContent = `Descargar Horario Juez ${juez.nombre} en Excel`;
         botonJuez.style.margin = "20px";
         botonJuez.style.padding = "10px 20px";
         botonJuez.style.fontSize = "16px";

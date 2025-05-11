@@ -1,24 +1,33 @@
-import { Evento, Juez } from "../../types/types";
+import { Evento, Juez, TipoJuez } from "../../types/types";
 
-export function assignJudgeSchedule(judge: Juez, events: Evento[]) {
-    const category = judge.tipo
+type JudgeSchedule = {
+  [key in TipoJuez]?: Juez[];
+};
 
-    events.forEach(evento => {
-        if (evento.tipo === "Concurrent Activity") {
-            switch (category) {
-                case "Escrutinio":
-                    if (evento.nombre === "Escrutinio") judge.horario.push(evento)
-                    break;
-                case "Portfolio Técnico":
-                    if (evento.nombre === "Portfolio Técnico") judge.horario.push(evento)
-                    break;
-                case "Portfolio de Empresa":
-                    if(evento.nombre === "Portfolio de empresa") judge.horario.push(evento)
-                    break;
-                case "Presentación verbal":
-                    if(evento.nombre === "Presentación Verbal") judge.horario.push(evento)
+export function assignJudgeSchedule(judges: Juez[], events: Evento[]) {
+  const judgesByType: JudgeSchedule = judges.reduce((schedule, judge) => {
+    if (!schedule[judge.tipo]) {
+      schedule[judge.tipo] = [];
+    }
+    schedule[judge.tipo]!.push(judge);
+    return schedule;
+  }, {} as JudgeSchedule);
+
+  Object.entries(judgesByType).forEach(([tipo, juecesTipo]: [string, Juez[]]) => {
+    const judgeType = tipo as TipoJuez
+    const maxLength = juecesTipo.length
+    let index = 0;
+    events.forEach(event => {
+        if(event.nombre === judgeType) {
+            if(index >= maxLength) {
+                index = 0
             }
+            juecesTipo[index].horario.push(event)
+            index++
         }
-
     })
+
+
+  })
+  
 }

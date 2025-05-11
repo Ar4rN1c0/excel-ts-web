@@ -32,7 +32,7 @@ async function generarDummyInput() {
 
   // Day 1
   configSheet.addRow(['Dia 1 Start', new Date('2025-06-17T07:00:00.000Z').toISOString()]);
-  configSheet.addRow(['Dia 1 End', new Date('2025-06-17T12:00:00.000Z').toISOString()]);
+  configSheet.addRow(['Dia 1 End', new Date('2025-06-17T17:00:00.000Z').toISOString()]);
 
   // Day 2
   configSheet.addRow(['Dia 2 Start', new Date('2025-06-18T07:00:00.000Z').toISOString()]);

@@ -7,7 +7,8 @@ export const generateJudges = (tipo: TipoJuez, cantidad: number) => {
     const juez: Juez = {
       id: i + 1,
       tipo: tipo,
-      horario: []
+      horario: [],
+      nombre: `${tipo} ${i + 1}`
     };
     judges.push(juez);
   }

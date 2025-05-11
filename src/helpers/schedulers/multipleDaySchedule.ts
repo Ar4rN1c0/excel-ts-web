@@ -117,7 +117,7 @@ export function multipleDaySchedule(
                 Development: config["Duración Portfolio Empresa Development"],
                 Professional: config["Duración Portfolio Empresa Professional"]
             },
-            "Portfolio de empresa"
+            "Portfolio de Empresa"
         );
 
         assignSmallDistributed(

@@ -7,7 +7,6 @@ import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
 import { Evento, GlobalConfig } from "./types/types";
 import { multipleDaySchedule } from "./helpers/schedulers/multipleDaySchedule";
 import { getGlobalWindows } from "./helpers/math/windows";
-import { generateInputView } from "./views/generateInputView";
 
 document.body.innerHTML = "";
 
@@ -56,9 +55,8 @@ export const config: GlobalConfig = {
   }
 }
 
-async function main() {
+async function test() {
   try {
-    //const { config }: { config: GlobalConfig } = await generateInputView();
     console.log({ ...config });
 
 
@@ -91,4 +89,4 @@ async function main() {
   }
 }
 
-main();
+test();
