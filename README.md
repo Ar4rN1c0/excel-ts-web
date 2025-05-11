@@ -4,7 +4,7 @@ This project is a complete scheduling system for organizing and managing **multi
 
 ---
 
-## 📋 Features
+## Features
 
 - 📅 Supports **multi-day event scheduling**
 - 🏎️ Automatically assigns:
@@ -25,7 +25,7 @@ This project is a complete scheduling system for organizing and managing **multi
 
 ---
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 src/
@@ -44,7 +44,7 @@ src/
 
 ---
 
-## 🛠️ Setup
+## Setup
 
 ### 1. Install Dependencies
 
@@ -72,7 +72,7 @@ node scripts/generate.js
 
 ---
 
-## 🧾 File: `dummy-input.xlsx`
+## File: `dummy-input.xlsx`
 
 This contains:
 
@@ -83,7 +83,7 @@ You can edit this manually or regenerate it using the script above.
 
 ---
 
-## 🧑‍⚖️ Roles Supported
+## Roles Supported
 
 - Jueces de:
   - Portfolio Técnico
@@ -94,7 +94,7 @@ You can edit this manually or regenerate it using the script above.
 
 ---
 
-## 📦 Outputs
+## Outputs
 
 After running the script:
 
@@ -106,12 +106,14 @@ After running the script:
 
 ---
 
-## 🧪 Testing
+## Testing
 
 To run tests:
 
 ```bash
-npm test
+node --run test
+# or
+pnpm test
 ```
 
 Tests cover:
@@ -122,7 +124,7 @@ Tests cover:
 
 ---
 
-## 📅 Example Event Duration Config
+## Example Event Duration Config
 
 \\\json
 {
@@ -134,6 +136,7 @@ Tests cover:
 \\\
 
 ---
+
 
 ## 📜 License
 
