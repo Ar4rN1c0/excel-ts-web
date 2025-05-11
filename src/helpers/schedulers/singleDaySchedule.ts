@@ -17,7 +17,6 @@ export function singleDaySchedule(
     config: GlobalConfig
 ) {
     const startPrices = new Date(endDate.getTime() - mins(90));
-
     const endRegisterDate = assignRegisters(startDate, 5, teams, personelRegister) as Date;
 
     const endCharla = assignGlobalEvent(
@@ -33,6 +32,7 @@ export function singleDaySchedule(
         config["Duración Montaje del Pit Display"],
         teams
     ) as Date;
+    console.log("Eeeooo")
 
     assignSmallEvent(
         teams,
@@ -57,7 +57,7 @@ export function singleDaySchedule(
             Development: { max: 2, min: 2 },
             Professional: { max: 2, min: 2 }
         }
-    }, startPrices);
+    }, endPitDisplay, startPrices);
 
     try {
         assignSmallEvent(

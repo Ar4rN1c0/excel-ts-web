@@ -5,8 +5,6 @@ import { generateMainView } from "./views/generateMainView";
 //import { singleDaySchedule } from "./helpers/schedulers/singleDaySchedule";
 import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
 import { Evento, GlobalConfig } from "./types/types";
-import { multipleDaySchedule } from "./helpers/schedulers/multipleDaySchedule";
-import { getGlobalWindows } from "./helpers/math/windows";
 import { generateInputView } from "./views/generateInputView";
 import { singleDaySchedule } from "./helpers/schedulers/singleDaySchedule";
 
@@ -31,7 +29,6 @@ async function singleDay() {
     const judgesScrutiny = generateJudges("Escrutinio", config["Nº de Jueces para el escrutinio"]);
 
     const judges = [...judgesPortfolioTecnico, ...judgesPortfolioEmpresa, ...judgesVerbal, ...judgesScrutiny];
-    console.log([...judges])
     const startDate = new Date(config["Dia 1 Start"]!)
     const endDate = new Date(config["Dia 1 End"]!)
 

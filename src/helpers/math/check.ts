@@ -1,4 +1,4 @@
-import {  Evento } from "../../types/types";
+import { Evento } from "../../types/types";
 
 /**
  * Verifica si al añadir un nuevo evento a un conjunto de eventos existentes

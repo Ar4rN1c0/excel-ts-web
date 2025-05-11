@@ -10,9 +10,7 @@ export function processInputData(configData: any[][], equiposData: any[][]) {
     if (!row || row.length < 2) continue;
     const key = String(row[0]).trim();
     let v = row[1];
-    const raw = v;
 
-    console.log(`🔍 Fila ${i}: key="${key}", crudo=`, raw);
 
     // Manejo de fechas a partir de cadenas ISO
     if ((key === 'StartDate' || key === 'EndDate') && typeof v === 'string') {
@@ -22,7 +20,6 @@ export function processInputData(configData: any[][], equiposData: any[][]) {
 
     config[key] = v;
   }
-  console.log('⚙️ Config tras lectura KV:', config);
 
   // 2) Valores por defecto
   config["Nº de personal para el registro"] ||= 1;
@@ -55,7 +52,6 @@ export function processInputData(configData: any[][], equiposData: any[][]) {
       horario: [] as any[]  // Aquí puedes agregar más lógica si es necesario
     });
   }
-  console.log('👥 Equipos parseados:', equipos);
 
   return { config, equipos };
 }

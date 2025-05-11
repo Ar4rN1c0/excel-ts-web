@@ -22,7 +22,6 @@ export const getAvailableWindows = (
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 
   const huecos: [number, number][] = [];
-
   const startMs = start.getTime();
   const endMs = end.getTime();
 

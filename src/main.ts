@@ -58,7 +58,7 @@ export const config: GlobalConfig = {
 
 async function main() {
   try {
-    //const { config }: { config: GlobalConfig } = await generateInputView();
+    const { config }: { config: GlobalConfig } = await generateInputView();
     console.log({ ...config });
 
 
