@@ -13,11 +13,9 @@ export const assignSmallEvent = (
 ): Date => {
   const globalEvents: Evento[] = [];
 
-  // Filtrar equipos relevantes (que tengan duración definida para este evento)
   const filteredTeams = teams.filter(team => durationMap[team.categoria] > 0);
   const windowsCache = new Map<string, [Date, Date][]>();
 
-  // Ordenar equipos por prioridad (si existe) y luego por cantidad de ventanas disponibles
   const sortedTeams = [...filteredTeams].sort((a, b) => {
     const aPriority = priorities?.[a.categoria] ?? Infinity;
     const bPriority = priorities?.[b.categoria] ?? Infinity;

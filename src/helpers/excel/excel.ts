@@ -1,6 +1,6 @@
 // src/excel.ts
 
-export function processInputData(configData: any[][], equiposData: any[][]) {
+export function processInputData(configData: any[][]) {
   console.log('🚀 Entrando a processInputData');
   const config: any = {};
 
@@ -40,18 +40,6 @@ export function processInputData(configData: any[][], equiposData: any[][]) {
   };
   console.log('🏁 Rounds:', config.rounds);
 
-  // 4) Lectura de los equipos desde la hoja "Equipos"
-  const equipos: any[] = [];
-  for (let i = 1; i < equiposData.length; i++) {
-    const row = equiposData[i];
-    if (!row || row.length < 3) continue;
-    equipos.push({
-      id: row[0],
-      nombre: row[1],
-      categoria: row[2] as 'Entry' | 'Development' | 'Professional',
-      horario: [] as any[]  // Aquí puedes agregar más lógica si es necesario
-    });
-  }
 
-  return { config, equipos };
+  return { config };
 }

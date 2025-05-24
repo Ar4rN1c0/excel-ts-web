@@ -5,9 +5,9 @@ async function generarDummyInput() {
   const configSheet = workbook.addWorksheet('Configuración');
   configSheet.addRow(['Parámetro', 'Valor']);
 
-  const numEntry = 10;
-  const numDevelopment = 10;
-  const numProfessional = 10;
+  const numEntry = 40;
+  const numDevelopment = 40;
+  const numProfessional = 30;
   const totalEquipos = numEntry + numDevelopment + numProfessional;
 
   configSheet.addRow(['Nº equipos de Entry', numEntry]);
@@ -36,11 +36,12 @@ async function generarDummyInput() {
 
   // Day 2
   configSheet.addRow(['Dia 2 Start', new Date('2025-06-18T07:00:00.000Z').toISOString()]);
-  configSheet.addRow(['Dia 2 End', new Date('2025-06-18T10:00:00.000Z').toISOString()]);
+  configSheet.addRow(['Dia 2 End', new Date('2025-06-18T17:00:00.000Z').toISOString()]);
 
   // Day 3
   configSheet.addRow(['Dia 3 Start', new Date('2025-06-19T07:00:00.000Z').toISOString()]);
   configSheet.addRow(['Dia 3 End', new Date('2025-06-19T17:00:00.000Z').toISOString()]);
+  
 
   configSheet.addRow(["Duración registro", 5]);
   configSheet.addRow(["Duración Charla/Presentación", 30]);

@@ -1,10 +1,11 @@
 import { Equipo, GlobalConfig, Juez } from "../../types/types";
 import { assignClassificatoryRaces } from "../assigners/assignClassificatoryRaces";
+import { assignDescansos } from "../assigners/assignDescansos";
 import { assignGlobalEvent } from "../assigners/assignGlobal";
 import { assignSmallEvent } from "../assigners/assignSmallEvent";
 import { mins } from "../math/math";
 
-export function multipleDaySchedule(
+export const multipleDaySchedule = (
     teams: Equipo[],
     windows: Date[][],
     judgesVerbal: Juez[],
@@ -13,29 +14,22 @@ export function multipleDaySchedule(
     judgesPortfolioTecnico: Juez[],
     personelRegister: number,
     config: GlobalConfig
-) {
+) => {
     const numOfDays = config.NumberOfDays;
-    // time by which ALL registration _and_ small events must finish:
+
     const startPrices = new Date(
         windows[numOfDays - 1][1].getTime() - mins(90)
     );
 
-    // 1) Pre‐seed all the “Descanso” slots _first_ (so they’re in every team.horario)
-    for (let i = 0; i < windows.length - 1; i++) {
-        const endCurrent = windows[i][1];
-        const startNext = windows[i + 1][0];
-        if (endCurrent < startNext) {
-            assignGlobalEvent(
-                "Descanso",
-                endCurrent,
-                (startNext.getTime() - endCurrent.getTime()) / 60000,
-                teams
-            );
-        }
-    }
 
-    // 2) Now schedule _all_ the 5-minute “Registro” slots into whatever gaps remain—
-    //    spanning from the very first window’s start up to startPrices.
+    /*
+        Since the rest of the events will not be placed on top of previous ones,
+        the best way to simulate multi day is by forcing the gaps between days to be occupied
+        hence the scheduler will respect them and not put anything on top.
+        The "Descanso" are removed after assigning the rest of the events and outputing excels
+    */
+    assignDescansos(windows, teams)
+
     const registroDurations = {
         Entry: 5,
         Development: 5,
@@ -49,7 +43,7 @@ export function multipleDaySchedule(
         personelRegister,// how many counters in parallel
         registroDurations,
         "Registro"
-    ) as Date;
+    );
 
 
     // 3) The rest of your global events
@@ -58,14 +52,14 @@ export function multipleDaySchedule(
         endRegisterDate,
         config["Duración Charla/Presentación"],
         teams
-    ) as Date;
+    );
 
     const endPitDisplay = assignGlobalEvent(
         "Pit Display",
         endCharla,
         config["Duración Montaje del Pit Display"],
         teams
-    ) as Date;
+    );
 
     // 4) All the concurrent small events (Scrutiny, Portfolios, Verbal)
     assignSmallEvent(
@@ -134,7 +128,6 @@ export function multipleDaySchedule(
         console.error(error);
     }
 
-    // 5) Finally, closing ceremony
     assignGlobalEvent(
         "Ceremonia de Clausura y Premios",
         startPrices,

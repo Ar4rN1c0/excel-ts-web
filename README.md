@@ -38,7 +38,7 @@ src/
 │
 ├── types/               # Shared types (Equipo, Evento, Juez, Config, etc.)
 ├── style.css            # Basic responsive styling for UI
-├── index.ts             # Main entry point
+├── main.ts             # Main entry point
 └── excel/               # Excel export and input parsing
 ```
 
@@ -126,14 +126,14 @@ Tests cover:
 
 ## Example Event Duration Config
 
-\\\json
+```json
 {
   "Duración registro": 5,
   "Duración Escrutinio Entry": 15,
   "Duración Portfolio Técnico Professional": 15,
   "Duración Presentación Verbal Entry": 10
 }
-\\\
+```
 
 ---
 

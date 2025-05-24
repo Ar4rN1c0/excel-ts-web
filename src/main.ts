@@ -11,7 +11,7 @@ import { generateInputView } from "./views/generateInputView";
 
 document.body.innerHTML = "";
 
-export const config: GlobalConfig = {
+export const dummyConfig: GlobalConfig = {
   "Nº equipos de Entry": 10,
   "Nº equipos de Development": 10,
   "Nº equipos de Professional": 10,
@@ -74,14 +74,12 @@ async function main() {
     const judgesScrutiny = generateJudges("Escrutinio", config["Nº de Jueces para el escrutinio"]);
 
     const judges = [...judgesPortfolioTecnico, ...judgesPortfolioEmpresa, ...judgesVerbal, ...judgesScrutiny];
-    console.log([...judges])
     const windows = getGlobalWindows(config)
-
+    console.time("id1")
     multipleDaySchedule(teams, windows, judgesVerbal, judgesScrutiny, judgesPortfolioEmpresa, judgesPortfolioTecnico, config["Nº de personal para el registro"], config);
-
+    console.timeEnd("id1")
     const eventos: Evento[] = teams.flatMap(team => team.horario);
     assignJudgeSchedule(judges, eventos)
-    console.log({...judges})
 
     document.body.innerHTML = '';
 
@@ -91,4 +89,4 @@ async function main() {
   }
 }
 
-main();
+main()
