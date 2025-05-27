@@ -77,7 +77,11 @@ export const multipleDaySchedule = (
     );
 
     assignClassificatoryRaces(teams, {
-        duration: 10,
+        duration: {
+            Entry: config["Duración Carrera Entry"],
+            Development: config["Duración Carrera Development"],
+            Professional: config["Duración Carrera Professional"]
+        },
         heatsPerCategory: {
             Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
             Development: { max: 2, min: 2 },

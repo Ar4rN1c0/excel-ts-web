@@ -46,7 +46,9 @@ export const config: GlobalConfig = {
   "Duración Presentación Verbal Development": 15,
   "Duración Presentación Verbal Professional": 15,
   "Duración Ceremonia de Clausura y Premios": 60,
-  "Duración Carrera": 10,
+  "Duración Carrera Development": 10,
+  "Duración Carrera Entry": 10,
+  "Duración Carrera Professional": 10,
   "Tiempo Eliminatorias": 40,
   "rounds": {
     "Entry": 2,

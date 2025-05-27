@@ -1,4 +1,4 @@
-import { Categoria, Equipo, GlobalConfig } from "../../types/types";
+import { Categoria, Equipo, GlobalConfig } from "../../../types/types";
 
 const CATEGORIAS: Categoria[] = ["Entry", "Development", "Professional"];
 

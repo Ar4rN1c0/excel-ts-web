@@ -63,7 +63,9 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             "Duración Presentación Verbal Development",
             "Duración Presentación Verbal Professional",
             "Duración Ceremonia de Clausura y Premios",
-            "Duración Carrera",
+            "Duración Carrera Entry",
+            "Duración Carrera Development",
+            "Duración Carrera Professional",
             "Tiempo Eliminatorias",
             "Nº de carreras a la vez",
         ];

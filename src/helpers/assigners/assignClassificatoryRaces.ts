@@ -16,7 +16,6 @@ export const assignClassificatoryRaces = (
   end: Date,
   maxRaces: number // new param!
 ): Evento[] => {
-
   const { heatsPerCategory, duration } = raceConfig;
 
   // Group teams by category
@@ -29,7 +28,7 @@ export const assignClassificatoryRaces = (
   }
 
   // Generate all races (unsorted)
-  const unsortedRaces: UnsortedRace[] = [];
+  const unsortedRaces: (UnsortedRace & { categoria: Categoria })[] = [];
   for (const category of Object.keys(teamsByCategory) as Categoria[]) {
     const categoryTeams = teamsByCategory[category]!;
     if (categoryTeams.length === 0) continue;
@@ -37,7 +36,10 @@ export const assignClassificatoryRaces = (
     const maxHeats = heatsPerCategory[category].max;
     const races = generateUnsortedRacesByCategory(categoryTeams, maxHeats);
 
-    unsortedRaces.push(...races);
+    // Annotate each race with its category
+    for (const r of races) {
+      unsortedRaces.push({ ...r, categoria: category });
+    }
   }
 
   // Sort by earliest start time
@@ -50,7 +52,9 @@ export const assignClassificatoryRaces = (
   type RaceSlot = { end: Date }
   let raceSlots: RaceSlot[] = [];
 
-  for (const { team1, team2, earliestStart } of unsortedRaces) {
+  for (const { team1, team2, earliestStart, categoria } of unsortedRaces) {
+    const raceDuration = duration[categoria];
+
     // Find the earliest time when a slot is available
     let slotAvailableFrom = start;
     if (raceSlots.length >= maxRaces) {
@@ -66,12 +70,13 @@ export const assignClassificatoryRaces = (
       slotAvailableFrom.getTime(),
       earliestStart.getTime()
     ));
+    console.log(raceDuration)
 
     // Find windows for both teams from this earliestPossible time
-    const windows1 = getAvailableWindows(earliestPossible, end, team1.horario, duration);
-    const windows2 = getAvailableWindows(earliestPossible, end, team2.horario, duration);
+    const windows1 = getAvailableWindows(earliestPossible, end, team1.horario, raceDuration);
+    const windows2 = getAvailableWindows(earliestPossible, end, team2.horario, raceDuration);
 
-    const sharedWindow = findFirstSharedWindow(windows1, windows2, duration);
+    const sharedWindow = findFirstSharedWindow(windows1, windows2, raceDuration);
 
     if (!sharedWindow) {
       throw new Error(`No se pudo asignar carrera para ${team1.nombre} vs ${team2.nombre}`);
@@ -82,7 +87,7 @@ export const assignClassificatoryRaces = (
       tipo: "Race",
       start: startTime,
       end: endTime,
-      duracion: duration,
+      duracion: raceDuration,
       nombre: `Carrera Clasificatoria ${raceNumber++} - ${team1.nombre} vs ${team2.nombre}`,
     };
 

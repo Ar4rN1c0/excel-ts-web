@@ -54,11 +54,13 @@ async function generarDummyInput() {
   configSheet.addRow(["Duración Portfolio Empresa Entry", 0]);
   configSheet.addRow(["Duración Portfolio Empresa Development", 15]);
   configSheet.addRow(["Duración Portfolio Empresa Professional", 15]);
-  configSheet.addRow(["Duración Presentación Verbal Entry", 15]); // fixed from 10
+  configSheet.addRow(["Duración Presentación Verbal Entry", 15]);
+  configSheet.addRow(["Duración Carrera Entry", 8]);
+  configSheet.addRow(["Duración Carrera Development", 10]);
+  configSheet.addRow(["Duración Carrera Professional", 12]);
   configSheet.addRow(["Duración Presentación Verbal Development", 15]);
   configSheet.addRow(["Duración Presentación Verbal Professional", 15]);
   configSheet.addRow(["Duración Ceremonia de Clausura y Premios", 60]);
-  configSheet.addRow(["Duración Carrera", 10]);
   configSheet.addRow(["Tiempo Eliminatorias", 40]); // 4 * 10
   configSheet.addRow(["Nº de carreras a la vez", 2]);
 

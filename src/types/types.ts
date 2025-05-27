@@ -42,7 +42,7 @@ export type DurationMap = Record<Categoria, number>;
 
 
 export type RaceConfig = {
-  duration: number; // minutos
+  duration: Record<Categoria, number>; // minutos por categoría
   heatsPerCategory: Record<Categoria, { min: number; max: number }>;
 };
 
@@ -83,7 +83,9 @@ export interface StaticConfig {
   "Duración Presentación Verbal Development": number;
   "Duración Presentación Verbal Professional": number;
   "Duración Ceremonia de Clausura y Premios": number;
-  "Duración Carrera": number;
+  "Duración Carrera Entry": number;
+  "Duración Carrera Development": number;
+  "Duración Carrera Professional": number;
   "Tiempo Eliminatorias": number;
   "Nº de carreras a la vez": number;
   rounds: {
