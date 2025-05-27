@@ -1,13 +1,13 @@
 import { generateTeams } from "./helpers/generators/generateTeams";
 import { generateJudges } from "./helpers/generators/generateJudges";
 import "./style.css";
-import { generateMainView } from "./views/generateMainView";
+import { generateMainView } from "./views/main/generateMainView";
 //import { singleDaySchedule } from "./helpers/schedulers/singleDaySchedule";
 import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
 import { Evento, GlobalConfig } from "./types/types";
 import { multipleDaySchedule } from "./helpers/schedulers/multipleDaySchedule";
 import { getGlobalWindows } from "./helpers/math/windows";
-import { generateInputView } from "./views/generateInputView";
+import { generateInputView } from "./views/main/generateInputView";
 
 document.body.innerHTML = "";
 

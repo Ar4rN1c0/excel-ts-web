@@ -2,7 +2,7 @@
 export type Categoria = 'Entry' | 'Development' | 'Professional';
 export type TipoJuez = 'Portfolio Técnico' | 'Portfolio de Empresa' | 'Presentación Verbal' | "Escrutinio";
 
-export type EventoTipo = 
+export type EventoTipo =
   | "Concurrent Activity"
   | "Global Event"
   | "Race"
@@ -98,3 +98,9 @@ export type GlobalConfig = StaticConfig & DynamicDayFields;
 export type Priorities = {
   [K in Categoria]?: number;
 };
+
+
+export type State = {
+  teams: Equipo[],
+  judges: Juez[]
+}
