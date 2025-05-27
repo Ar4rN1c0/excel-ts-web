@@ -53,20 +53,22 @@ export const dummyConfig: GlobalConfig = {
     "Entry": 2,
     "Development": 4,
     "Professional": 4
-  }
+  },
+  "Nº de carreras a la vez": 1,
 }
 
 async function main() {
   try {
-    const { config }: { config: GlobalConfig } = await generateInputView();
-    console.log({ ...config });
-
-
-    const entryTeams = generateTeams("Entry", config["Nº equipos de Entry"]);
-    const developmentTeams = generateTeams("Development", config["Nº equipos de Development"]);
-    const professionalTeams = generateTeams("Professional", config["Nº equipos de Professional"]);
-
-    const teams = [...entryTeams, ...developmentTeams, ...professionalTeams];
+    const { config, teams: inputTeams }= await generateInputView();
+    console.log({...config});
+    let teams = inputTeams;
+    if(inputTeams.length === 0) {
+      const entryTeams = generateTeams("Entry", config["Nº equipos de Entry"]);
+      const developmentTeams = generateTeams("Development", config["Nº equipos de Development"]);
+      const professionalTeams = generateTeams("Professional", config["Nº equipos de Professional"]);
+  
+      teams = [...entryTeams, ...developmentTeams, ...professionalTeams];
+    }
 
     const judgesPortfolioTecnico = generateJudges("Portfolio Técnico", config["Nº de Jueces para el portfolio técnico"]);
     const judgesPortfolioEmpresa = generateJudges("Portfolio de Empresa", config["Nº de Jueces para el portfolio de empresa"]);
@@ -75,9 +77,7 @@ async function main() {
 
     const judges = [...judgesPortfolioTecnico, ...judgesPortfolioEmpresa, ...judgesVerbal, ...judgesScrutiny];
     const windows = getGlobalWindows(config)
-    console.time("id1")
     multipleDaySchedule(teams, windows, judgesVerbal, judgesScrutiny, judgesPortfolioEmpresa, judgesPortfolioTecnico, config["Nº de personal para el registro"], config);
-    console.timeEnd("id1")
     const eventos: Evento[] = teams.flatMap(team => team.horario);
     assignJudgeSchedule(judges, eventos)
 

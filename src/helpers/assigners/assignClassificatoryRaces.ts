@@ -13,12 +13,13 @@ export const assignClassificatoryRaces = (
   teams: Equipo[],
   raceConfig: RaceConfig,
   start: Date,
-  end: Date
+  end: Date,
+  maxRaces: number // new param!
 ): Evento[] => {
 
   const { heatsPerCategory, duration } = raceConfig;
 
-  // Agrupar equipos por categoría
+  // Group teams by category
   const teamsByCategory: Partial<Record<Categoria, Equipo[]>> = {};
   for (const team of teams) {
     if (!teamsByCategory[team.categoria]) {
@@ -27,33 +28,48 @@ export const assignClassificatoryRaces = (
     teamsByCategory[team.categoria]!.push(team);
   }
 
-
-  // Generar todas las carreras sin ordenar
+  // Generate all races (unsorted)
   const unsortedRaces: UnsortedRace[] = [];
   for (const category of Object.keys(teamsByCategory) as Categoria[]) {
     const categoryTeams = teamsByCategory[category]!;
     if (categoryTeams.length === 0) continue;
 
     const maxHeats = heatsPerCategory[category].max;
-
     const races = generateUnsortedRacesByCategory(categoryTeams, maxHeats);
 
     unsortedRaces.push(...races);
   }
 
-  // Ordenar por la hora más temprana posible
+  // Sort by earliest start time
   unsortedRaces.sort((a, b) => a.earliestStart.getTime() - b.earliestStart.getTime());
 
   const allRaces: Evento[] = [];
   let raceNumber = 1;
-  let lastAssigned = start;
 
-  for (const { team1, team2 } of unsortedRaces) {
+  // This will track the end times of currently ongoing races (max size: maxRaces)
+  type RaceSlot = { end: Date }
+  let raceSlots: RaceSlot[] = [];
 
-    const windows1 = getAvailableWindows(lastAssigned, end, team1.horario, duration);
-    const windows2 = getAvailableWindows(lastAssigned, end, team2.horario, duration);
+  for (const { team1, team2, earliestStart } of unsortedRaces) {
+    // Find the earliest time when a slot is available
+    let slotAvailableFrom = start;
+    if (raceSlots.length >= maxRaces) {
+      // Find the slot that frees up the earliest
+      raceSlots.sort((a, b) => a.end.getTime() - b.end.getTime());
+      slotAvailableFrom = raceSlots[0].end;
+      // Remove finished race(s)
+      raceSlots = raceSlots.filter(slot => slot.end.getTime() > slotAvailableFrom.getTime());
+    }
 
+    // --- KEY FIX: Make sure we don't assign before both teams finish their own Escrutinio
+    const earliestPossible = new Date(Math.max(
+      slotAvailableFrom.getTime(),
+      earliestStart.getTime()
+    ));
 
+    // Find windows for both teams from this earliestPossible time
+    const windows1 = getAvailableWindows(earliestPossible, end, team1.horario, duration);
+    const windows2 = getAvailableWindows(earliestPossible, end, team2.horario, duration);
 
     const sharedWindow = findFirstSharedWindow(windows1, windows2, duration);
 
@@ -70,7 +86,6 @@ export const assignClassificatoryRaces = (
       nombre: `Carrera Clasificatoria ${raceNumber++} - ${team1.nombre} vs ${team2.nombre}`,
     };
 
-
     const collision1 = hasCollision(team1.horario, newEvent, 1);
     const collision2 = hasCollision(team2.horario, newEvent, 1);
 
@@ -78,7 +93,8 @@ export const assignClassificatoryRaces = (
       team1.horario.push(newEvent);
       team2.horario.push(newEvent);
       allRaces.push(newEvent);
-      lastAssigned = newEvent.end; // advance the global scheduler
+      raceSlots.push({ end: newEvent.end });
+      // (Don't advance a global lastAssigned; parallelism handled by slots)
     } else {
       throw new Error(`Colisión al asignar carrera entre ${team1.nombre} y ${team2.nombre}`);
     }

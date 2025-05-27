@@ -11,7 +11,7 @@ import { getGlobalWindows } from "./helpers/math/windows";
 document.body.innerHTML = "";
 
 export const config: GlobalConfig = {
-  "Nº equipos de Entry": 10,
+  "Nº equipos de Entry": 9,
   "Nº equipos de Development": 10,
   "Nº equipos de Professional": 10,
   "Nº de equipos que se clasifican": 4,
@@ -20,7 +20,7 @@ export const config: GlobalConfig = {
   "Nº de Jueces para el escrutinio": 3,
   "Nº de Jueces para la presentación verbal": 2,
   "Nº de personal para el registro": 2,
-  "Carreras Entry": 2,
+  "Carreras Entry": 1,
   "Carreras Development": 4,
   "Carreras Professional": 4,
   "NumberOfDays": 3,
@@ -52,7 +52,8 @@ export const config: GlobalConfig = {
     "Entry": 2,
     "Development": 4,
     "Professional": 4
-  }
+  },
+  "Nº de carreras a la vez": 2
 }
 
 async function test() {

@@ -48,12 +48,12 @@ export type RaceConfig = {
 
 
 // Este tipo captura las claves como "Dia 1 Start", "Dia 2 End", etc.
-type DynamicDayFields = {
+export type DynamicDayFields = {
   [key in `Dia ${number} ${"Start" | "End"}`]?: string;
 };
 
 // Este tipo define la estructura fija del objeto
-interface StaticConfig {
+export interface StaticConfig {
   "Nº equipos de Entry": number;
   "Nº equipos de Development": number;
   "Nº equipos de Professional": number;
@@ -85,6 +85,7 @@ interface StaticConfig {
   "Duración Ceremonia de Clausura y Premios": number;
   "Duración Carrera": number;
   "Tiempo Eliminatorias": number;
+  "Nº de carreras a la vez": number;
   rounds: {
     Entry: number;
     Development: number;

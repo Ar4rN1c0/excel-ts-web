@@ -83,7 +83,7 @@ export const multipleDaySchedule = (
             Development: { max: 2, min: 2 },
             Professional: { max: 2, min: 2 }
         },
-    }, endPitDisplay, startPrices);
+    }, endPitDisplay, startPrices, config["Nº de carreras a la vez"]);
 
     try {
         assignSmallEvent(

@@ -67,12 +67,28 @@ export function getGlobalWindows(config: GlobalConfig) {
 
     const start = config[startKey as keyof GlobalConfig];
     const end = config[endKey as keyof GlobalConfig];
+    let startDate: Date | null = null;
+    let endDate: Date | null = null;
 
-    if (typeof start === "string" && typeof end === "string") {
-      windows.push([new Date(start), new Date(end)]);
-    } else {
-      console.warn(`Skipping day ${i} due to invalid date values.`);
+    if (start instanceof Date && !isNaN(start as any)) {
+      startDate = start;
+    } else if (typeof start === "string") {
+      startDate = new Date(start);
     }
+
+    if (end instanceof Date && !isNaN(end as any)) {
+      endDate = end;
+    } else if (typeof end === "string") {
+      endDate = new Date(end);
+    }
+
+    if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+      windows.push([startDate, endDate]);
+    } else {
+      console.warn(`Skipping day ${i} due to invalid date values:`, start, end);
+    }
+
+
   }
 
 
