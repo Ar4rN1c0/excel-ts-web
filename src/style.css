@@ -2,68 +2,83 @@
 
 /* Variables de colores para facilitar modificaciones */
 :root {
-    --primary-color: #007BFF;
-    --primary-hover: #0069d9;
-    --secondary-color: #6C757D;
-    --background-color: #F8F9FA;
-    --text-color: #343A40;
-  }
-  
-  /* Estilo global para el body */
-  body {
-    margin: 0;
-    padding: 20px;
-    font-family: Arial, sans-serif;
-    background-color: var(--background-color);
-    color: var(--text-color);
-  }
-  
-  /* Contenedor principal */
-  #app {
-    max-width: 800px;
-    margin: 0 auto;
-    padding: 20px;
-    background-color: #FFF;
-    border-radius: 8px;
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
-  }
-  
-  /* Estilo para el input de archivo */
-  input[type="file"] {
-    display: block;
-    margin-bottom: 20px;
-  }
-  
-  /* Botones */
-  button {
-    display: inline-block;
-    padding: 10px 20px;
-    font-size: 1rem;
-    color: #FFF;
-    background-color: var(--primary-color);
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    max-width: 150px;
-  }
-  
-  button:hover {
-    background-color: var(--primary-hover);
-  }
-  
-  /* Contenedor de botones por equipo */
-  #team-buttons {
-    margin-top: 20px;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 3px;
-  }
-  
+  --primary-color: #007BFF;
+  --primary-hover: #0069d9;
+  --secondary-color: #6C757D;
+  --background-color: #F8F9FA;
+  --text-color: #343A40;
+}
 
-  .button-section {
-    display: flex;
-    gap: 3px;
-    width: 80vw;
-    flex-wrap: wrap;
-  }
+/* Estilo global para el body */
+body {
+  margin: 0;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  background-color: var(--background-color);
+  color: var(--text-color);
+}
+
+/* Contenedor principal */
+#app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  background-color: #FFF;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo para el input de archivo */
+input[type="file"] {
+  display: block;
+  margin-bottom: 20px;
+}
+
+/* Botones */
+button {
+  display: inline-block;
+  padding: 10px 20px;
+  font-size: 1rem;
+  color: #FFF;
+  background-color: var(--primary-color);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  max-width: 150px;
+}
+
+button:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Contenedor de botones por equipo */
+#team-buttons {
+  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+
+.button-section {
+  display: flex;
+  gap: 3px;
+  width: 80vw;
+  flex-wrap: wrap;
+}
+
+.special-download-btn {
+  background-color: #2e7d32;
+  /* A nice green */
+  color: white;
+  font-weight: bold;
+  border: 2px solid #1b5e20;
+  margin-top: 8px;
+  margin-bottom: 8px;
+  /* Add whatever styles you want */
+}
+
+.special-download-btn:hover {
+  background-color: #388e3c;
+}

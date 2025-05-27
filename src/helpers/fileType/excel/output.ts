@@ -1,6 +1,6 @@
 // output.ts
 import ExcelJS from 'exceljs';
-import { Equipo, Juez, Evento } from '../../types/types'; // Corregida la ruta de importación
+import { Equipo, Juez, Evento } from '../../../types/types'; // Corregida la ruta de importación
 
 export async function generarExcelEquipo(equipo: Equipo) {
   const wb = new ExcelJS.Workbook();

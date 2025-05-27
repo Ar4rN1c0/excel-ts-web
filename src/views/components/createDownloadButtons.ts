@@ -1,7 +1,8 @@
 import { Equipo, Juez } from "../../types/types";
-import { generarExcelEquipo, generarExcelJuez, generarExcelMaster } from "../../helpers/excel/output";
+import { generarExcelEquipo, generarExcelJuez, generarExcelMaster } from "../../helpers/fileType/excel/output";
 import { createDownloadButton } from "./createDownloadButton";
-import { generateZip } from "../../helpers/excel/zipUtil";
+import { generateZip } from "../../helpers/fileType/zip/zipUtil";
+import { downloadStateAsJSON } from "../../helpers/fileType/json/downloadStateAsJSON";
 
 export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElement {
     const section = document.createElement("section");
@@ -44,13 +45,22 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElem
         section.appendChild(judgeBtn);
     });
 
-    // ZIP ALL button
+    // Save State as JSON button (special styling)
+    const saveStateBtn = createDownloadButton(
+        "Guardar Estado (JSON)",
+        () => downloadStateAsJSON(teams, judges)
+    );
+    saveStateBtn.classList.add("special-download-btn");
+    section.appendChild(saveStateBtn);
+
+    // ZIP ALL button (special styling)
     const zipBtn = createDownloadButton(
         "Descargar Todos en ZIP",
         async () => {
             await generateZip(teams, judges)
         }
     );
+    zipBtn.classList.add("special-download-btn");
     section.appendChild(zipBtn);
 
     return section;

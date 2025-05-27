@@ -1,7 +1,7 @@
 import JSZip from "jszip";
 import ExcelJS from "exceljs";
-import { Equipo, Juez } from "../../types/types";
-import { formatActivityName, formatDateTime, getDurationInMinutes } from "./output";
+import { Equipo, Juez } from "../../../types/types";
+import { formatActivityName, formatDateTime, getDurationInMinutes } from "../excel/output";
 
 export async function generateZip(teams: Equipo[], judges: Juez[]) {
     const zip = new JSZip();

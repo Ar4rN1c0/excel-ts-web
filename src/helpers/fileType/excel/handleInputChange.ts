@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';  
-import { processExcelData } from '../../helpers/excel/excel';
-import { Equipo, GlobalConfig } from '../../types/types';
+import { processExcelData } from './excel';
+import { Equipo, GlobalConfig } from '../../../types/types';
 
 // Tipos para los datos procesados
 interface ProcessedData {

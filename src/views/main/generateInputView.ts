@@ -1,5 +1,5 @@
 import { Equipo, GlobalConfig } from '../../types/types';
-import { handleFileInputChange } from '../../helpers/excel/handleInputChange';
+import { handleFileInputChange } from '../../helpers/fileType/excel/handleInputChange';
 import { createConfigForm } from '../components/configForm';
 
 // Tipos para los datos procesados
