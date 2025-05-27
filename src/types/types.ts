@@ -51,6 +51,10 @@ export type RaceConfig = {
 export type DynamicDayFields = {
   [key in `Dia ${number} ${"Start" | "End"}`]?: string;
 };
+export type DynamicDescansoFields = {
+  [key in `Descanso ${string} ${"Start" | "End"}`]?: string;
+};
+
 
 // Este tipo define la estructura fija del objeto
 export interface StaticConfig {
@@ -96,7 +100,7 @@ export interface StaticConfig {
 }
 
 // Tipo final combinando estructura fija y campos dinámicos
-export type GlobalConfig = StaticConfig & DynamicDayFields;
+export type GlobalConfig = StaticConfig & DynamicDayFields & DynamicDescansoFields;
 
 export type Priorities = {
   [K in Categoria]?: number;

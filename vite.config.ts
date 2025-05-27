@@ -7,7 +7,8 @@ export default defineConfig({
         main: 'index.html',
         test: 'test.html', 
         singleDay: 'single-day.html',
-        library: "library.html"
+        library: "library.html",
+        calculate: "calculate.html"
       }
     }
   }

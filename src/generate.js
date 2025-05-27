@@ -42,6 +42,10 @@ async function generarDummyInput() {
   configSheet.addRow(['Dia 3 Start', new Date('2025-06-19T07:00:00.000Z').toISOString()]);
   configSheet.addRow(['Dia 3 End', new Date('2025-06-19T17:00:00.000Z').toISOString()]);
 
+
+  configSheet.addRow(['Descanso Comida Dia 1 Start', new Date('2025-06-17T12:00:00.000Z').toISOString()]);
+  configSheet.addRow(['Descanso Comida Dia 1 End', new Date('2025-06-17T14:00:00.000Z').toISOString()]);
+
   configSheet.addRow(["Duración registro", 5]);
   configSheet.addRow(["Duración Charla/Presentación", 30]);
   configSheet.addRow(["Duración Montaje del Pit Display", 60]);

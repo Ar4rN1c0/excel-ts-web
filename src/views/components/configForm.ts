@@ -1,21 +1,16 @@
 import { getCookie, setCookie } from "../../helpers/storage/cookie";
 import { GlobalConfig, StaticConfig } from "../../types/types";
 
-
 const CONFIG_FORM_COOKIE = "configFormData";
 const COOKIE_EXPIRES_DAYS = 365;
 
-
 export async function createConfigForm(): Promise<GlobalConfig> {
     return new Promise((resolve) => {
-        // Remove old form if any
         document.getElementById('configForm')?.remove();
 
-        // Helper to save to cookie
         function saveToCookie(data: { [key: string]: string }) {
             setCookie(CONFIG_FORM_COOKIE, JSON.stringify(data), COOKIE_EXPIRES_DAYS);
         }
-        // Helper to load from cookie
         function loadFromCookie(): { [key: string]: string } | undefined {
             const cookie = getCookie(CONFIG_FORM_COOKIE);
             if (cookie) {
@@ -33,6 +28,7 @@ export async function createConfigForm(): Promise<GlobalConfig> {
         form.style.border = "1px solid #ccc";
         form.style.margin = "2em";
 
+        // Make sure "NumberOfDays" is spelled exactly as used everywhere
         const staticFields: (keyof StaticConfig)[] = [
             "Nº equipos de Entry",
             "Nº equipos de Development",
@@ -70,7 +66,6 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             "Nº de carreras a la vez",
         ];
 
-        // Helper to create labeled inputs
         function labeledInput(label: string, name: string, type = 'number') {
             const div = document.createElement('div');
             div.style.marginBottom = "1em";
@@ -89,7 +84,6 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             return { div, input };
         }
 
-        // Add static fields
         const inputs: { [key: string]: HTMLInputElement } = {};
         for (const field of staticFields) {
             const { div, input } = labeledInput(field, field);
@@ -107,32 +101,134 @@ export async function createConfigForm(): Promise<GlobalConfig> {
         });
         form.appendChild(roundsDiv);
 
-        // Container for dynamic day fields
+        // Days container
         const daysContainer = document.createElement('div');
         daysContainer.id = "daysContainer";
         form.appendChild(daysContainer);
 
-        // Save all inputs to cookie on change
+        // ===== Descansos Section =====
+        const descansosContainer = document.createElement('div');
+        descansosContainer.id = "descansosContainer";
+        descansosContainer.style.margin = "2em 0";
+        descansosContainer.innerHTML = `<strong>Descansos (Breaks):</strong><br>`;
+        form.appendChild(descansosContainer);
+
+        // Add Descanso button
+        const addDescansoBtn = document.createElement('button');
+        addDescansoBtn.type = "button";
+        addDescansoBtn.textContent = "+ Añadir descanso";
+        addDescansoBtn.style.display = "block";
+        addDescansoBtn.style.marginBottom = "1em";
+        descansosContainer.appendChild(addDescansoBtn);
+
+        let descansos: { name: string; start: string; end: string }[] = [];
+
+        // Restore from cookie
+        const saved = loadFromCookie();
+
+        function renderDescansos() {
+            descansosContainer.querySelectorAll('.descanso-row').forEach(el => el.remove());
+            descansos.forEach((descanso, idx) => {
+                const row = document.createElement('div');
+                row.className = 'descanso-row';
+                row.style.marginBottom = '1em';
+
+                // Name
+                const nameInput = document.createElement('input');
+                nameInput.type = 'text';
+                nameInput.placeholder = 'Nombre';
+                nameInput.value = descanso.name;
+                nameInput.required = true;
+                nameInput.style.width = '8em';
+                nameInput.style.marginRight = '1em';
+                nameInput.oninput = () => {
+                    descansos[idx].name = nameInput.value;
+                    saveAllInputsToCookie();
+                };
+
+                // Start
+                const startInput = document.createElement('input');
+                startInput.type = 'datetime-local';
+                startInput.placeholder = 'Inicio';
+                startInput.value = descanso.start;
+                startInput.required = true;
+                startInput.style.marginRight = '1em';
+                startInput.oninput = () => {
+                    descansos[idx].start = startInput.value;
+                    saveAllInputsToCookie();
+                };
+
+                // End
+                const endInput = document.createElement('input');
+                endInput.type = 'datetime-local';
+                endInput.placeholder = 'Fin';
+                endInput.value = descanso.end;
+                endInput.required = true;
+                endInput.style.marginRight = '1em';
+                endInput.oninput = () => {
+                    descansos[idx].end = endInput.value;
+                    saveAllInputsToCookie();
+                };
+
+                // Remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.textContent = 'Eliminar';
+                removeBtn.style.marginLeft = '1em';
+                removeBtn.onclick = () => {
+                    descansos.splice(idx, 1);
+                    renderDescansos();
+                    saveAllInputsToCookie();
+                };
+
+                row.appendChild(nameInput);
+                row.appendChild(startInput);
+                row.appendChild(endInput);
+                row.appendChild(removeBtn);
+                descansosContainer.appendChild(row);
+            });
+        }
+
+        addDescansoBtn.onclick = () => {
+            descansos.push({ name: '', start: '', end: '' });
+            renderDescansos();
+            saveAllInputsToCookie();
+        };
+
+        // Save all inputs (static, rounds, days, descansos) to cookie
         function saveAllInputsToCookie() {
             const data: { [key: string]: string } = {};
             Object.keys(inputs).forEach(key => {
                 data[key] = inputs[key].value;
             });
+            // Save descansos with special keys
+            descansos.forEach(d => {
+                if (d.name) {
+                    data[`Descanso ${d.name} Start`] = d.start;
+                    data[`Descanso ${d.name} End`] = d.end;
+                }
+            });
             saveToCookie(data);
         }
 
-        // Restore data if present
-        const saved = loadFromCookie();
+        // Restore static, rounds, and descansos
         if (saved) {
-            // Fill static fields & rounds
             Object.entries(saved).forEach(([key, value]) => {
                 if (inputs[key]) inputs[key].value = value;
             });
+            // Restore descansos from saved keys
+            const descansoNames = Object.keys(saved)
+                .filter(key => key.startsWith("Descanso ") && key.endsWith(" Start"))
+                .map(key => key.slice(9, -6).trim());
+            descansos = descansoNames.map(name => ({
+                name,
+                start: saved[`Descanso ${name} Start`] || '',
+                end: saved[`Descanso ${name} End`] || ''
+            }));
         }
 
-        // Handle day fields when NumberOfDays changes (with restoring)
         function updateDayFieldsAndRestore(savedData?: { [key: string]: string }) {
-            const val = Number(inputs["NumberOfDays"].value);
+            const val = Number(inputs["NumberOfDays"]?.value);
             daysContainer.innerHTML = '';
             if (val && val > 0) {
                 for (let i = 1; i <= val; i++) {
@@ -169,10 +265,14 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             input.addEventListener('input', saveAllInputsToCookie);
         });
 
-        // Restore dynamic days if needed (order matters)
-        inputs["NumberOfDays"].addEventListener('input', () => updateDayFieldsAndRestore());
-        // If restoring, trigger day field creation with values
-        updateDayFieldsAndRestore(saved);
+        // Attach NumberOfDays handler if field exists
+        if (inputs["NumberOfDays"]) {
+            inputs["NumberOfDays"].addEventListener('input', () => updateDayFieldsAndRestore());
+            updateDayFieldsAndRestore(saved);
+        }
+
+        // Render descansos after possible restore
+        renderDescansos();
 
         // Submit button
         const submit = document.createElement('button');
@@ -202,11 +302,16 @@ export async function createConfigForm(): Promise<GlobalConfig> {
                     config[key] = inputs[key].value;
                 });
             }
+            // Add descansos as dynamic fields
+            descansos.forEach(d => {
+                if (d.name && d.start && d.end) {
+                    config[`Descanso ${d.name} Start`] = d.start;
+                    config[`Descanso ${d.name} End`] = d.end;
+                }
+            });
             form.remove();
-            // eraseCookie(CONFIG_FORM_COOKIE); // <--- remove or comment out this line!
             resolve(config as GlobalConfig);
         };
-
 
         document.body.appendChild(form);
         form.scrollIntoView({ behavior: 'smooth' });

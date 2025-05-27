@@ -3,6 +3,7 @@ import { assignClassificatoryRaces } from "../assigners/assignClassificatoryRace
 import { assignDescansos } from "../assigners/assignDescansos";
 import { assignGlobalEvent } from "../assigners/assignGlobal";
 import { assignSmallEvent } from "../assigners/assignSmallEvent";
+import { generateDescansos } from "../generators/generateDescansos";
 import { mins } from "../math/math";
 
 export const multipleDaySchedule = (
@@ -20,7 +21,13 @@ export const multipleDaySchedule = (
     const startPrices = new Date(
         windows[numOfDays - 1][1].getTime() - mins(90)
     );
+    const descansos = generateDescansos(config)
 
+    descansos.forEach(descanso => {
+        assignGlobalEvent(descanso.name, descanso.start, descanso.duration, teams)
+    })
+
+    console.log("teams descanso", teams)
 
     /*
         Since the rest of the events will not be placed on top of previous ones,
@@ -31,9 +38,9 @@ export const multipleDaySchedule = (
     assignDescansos(windows, teams)
 
     const registroDurations = {
-        Entry: 5,
-        Development: 5,
-        Professional: 5
+        Entry: config["Duración registro"],
+        Development: config["Duración registro"],
+        Professional: config["Duración registro"]
     };
 
     const endRegisterDate = assignSmallEvent(
@@ -138,4 +145,6 @@ export const multipleDaySchedule = (
         config["Duración Ceremonia de Clausura y Premios"],
         teams
     );
+
+    console.log(teams, "finall")
 }
