@@ -5,8 +5,8 @@ import { generateMainView } from "./views/main/generateMainView";
 //import { singleDaySchedule } from "./helpers/schedulers/singleDaySchedule";
 import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
 import { Evento, GlobalConfig } from "./types/types";
-import { generateInputView } from "./views/generateInputView";
 import { singleDaySchedule } from "./helpers/schedulers/singleDaySchedule";
+import { generateInputView } from "./views/main/generateInputView";
 
 document.body.innerHTML = "";
 

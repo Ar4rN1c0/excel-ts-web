@@ -1,7 +1,6 @@
 import { Equipo, GlobalConfig, Juez } from "../../types/types";
 import { assignClassificatoryRaces } from "../assigners/assignClassificatoryRaces";
 import { assignGlobalEvent } from "../assigners/assignGlobal";
-import { assignRegisters } from "../assigners/assignRegisters";
 import { assignSmallEvent } from "../assigners/assignSmallEvent";
 import { mins } from "../math/math";
 
@@ -17,7 +16,20 @@ export function singleDaySchedule(
     config: GlobalConfig
 ) {
     const startPrices = new Date(endDate.getTime() - mins(90));
-    const endRegisterDate = assignRegisters(startDate, 5, teams, personelRegister) as Date;
+    const registroDurations = {
+        Entry: config["Duración registro"],
+        Development: config["Duración registro"],
+        Professional: config["Duración registro"]
+    };
+
+    const endRegisterDate = assignSmallEvent(
+        teams,
+        startDate,   // from Day 1 start
+        startPrices,     // until just before the “startPrices” cutoff
+        personelRegister,// how many counters in parallel
+        registroDurations,
+        "Registro"
+    );
 
     const endCharla = assignGlobalEvent(
         "Charla/Presentación",
@@ -51,13 +63,17 @@ export function singleDaySchedule(
     );
 
     assignClassificatoryRaces(teams, {
-        duration: 10,
+        duration: {
+            Development: 10,
+            Entry: 10,
+            Professional: 10
+        },
         heatsPerCategory: {
             Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
             Development: { max: 2, min: 2 },
             Professional: { max: 2, min: 2 }
         }
-    }, endPitDisplay, startPrices);
+    }, endPitDisplay, startPrices, config["Nº de carreras a la vez"]);
 
     try {
         assignSmallEvent(
