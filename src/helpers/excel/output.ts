@@ -155,7 +155,7 @@ async function downloadWorkbook(wb: ExcelJS.Workbook, filename: string): Promise
   URL.revokeObjectURL(url);
 }
 
-function formatActivityName(activityType: string, teamName: string): string {
+export function formatActivityName(activityType: string, teamName: string): string {
   const activityNames: Record<string, string> = {
     'Registro': `Registro ${teamName}`,
     'Charla Inicial': `Charla Inicial ${teamName}`,
@@ -169,11 +169,11 @@ function formatActivityName(activityType: string, teamName: string): string {
   return activityNames[activityType] || activityType;
 }
 
-function getDurationInMinutes(event: Evento): number {
+export function getDurationInMinutes(event: Evento): number {
   return Math.round((event.end.getTime() - event.start.getTime()) / 60000);
 }
 
-function formatDateTime(date: Date): string {
+export function formatDateTime(date: Date): string {
   return date?.toLocaleString('es-ES', {
     day: '2-digit',
     month: '2-digit',

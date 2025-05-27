@@ -1,7 +1,7 @@
 import { Equipo, Juez } from "../../types/types";
 import { generarExcelEquipo, generarExcelJuez, generarExcelMaster } from "../../helpers/excel/output";
 import { createDownloadButton } from "./createDownloadButton";
-
+import { generateZip } from "../../helpers/excel/zipUtil";
 
 export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElement {
     const section = document.createElement("section");
@@ -43,6 +43,15 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElem
         );
         section.appendChild(judgeBtn);
     });
+
+    // ZIP ALL button
+    const zipBtn = createDownloadButton(
+        "Descargar Todos en ZIP",
+        async () => {
+            await generateZip(teams, judges)
+        }
+    );
+    section.appendChild(zipBtn);
 
     return section;
 }
