@@ -1,6 +1,6 @@
 import { GlobalConfig } from "../../types/types";
 
-type Descanso = { name: string; start: Date; duration: number };
+export type Descanso = { name: string; start: Date; duration: number };
 
 export function generateDescansos(config: GlobalConfig): Descanso[] {
     const descansoNames = Object.keys(config)

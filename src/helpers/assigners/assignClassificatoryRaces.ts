@@ -70,7 +70,6 @@ export const assignClassificatoryRaces = (
       slotAvailableFrom.getTime(),
       earliestStart.getTime()
     ));
-    console.log(raceDuration)
 
     // Find windows for both teams from this earliestPossible time
     const windows1 = getAvailableWindows(earliestPossible, end, team1.horario, raceDuration);

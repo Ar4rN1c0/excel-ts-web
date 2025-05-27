@@ -2,7 +2,7 @@ import { Equipo, GlobalConfig } from "../../types/types";
 import { assignGlobalEvent } from "../assigners/assignGlobal";
 import { assignSmallEvent } from "../assigners/assignSmallEvent";
 import { assignClassificatoryRaces } from "../assigners/assignClassificatoryRaces";
-import { generateDescansos } from "../generators/generateDescansos";
+import { Descanso, generateDescansos } from "../generators/generateDescansos";
 
 // Utility: Find latest end date from all events
 function findLatestEnd(teams: Equipo[]): Date {
@@ -15,15 +15,48 @@ function findLatestEnd(teams: Equipo[]): Date {
     return latest;
 }
 
-export const calculateTime = (teams: Equipo[], config: GlobalConfig): number => {
-    // Use a dummy far future end date
-    const startDate = new Date(2000, 0, 1, 8, 0, 0, 0);
-    const endDate = new Date(2000, 0, 9, 8, 0, 0, 0);
+/**
+ * Maps each descanso from its real timeline to the test timeline,
+ * preserving the relative distance from the real event's start date.
+ * @param descansos Original descansos, with their original .start times
+ * @param realStart The real Dia 1 Start (Date object)
+ * @param testStart The test schedule's starting point (Date object)
+ */
+function normalizeDescansosLinear(
+    descansos: Descanso[],
+    realStart: Date,
+    testStart: Date
+): Descanso[] {
+    const delta = testStart.getTime() - realStart.getTime();
+    return descansos.map(descanso => ({
+        ...descanso,
+        start: new Date(descanso.start.getTime() + delta)
+    }));
+}
 
-    // Reset team schedules (if needed)
+export const calculateTime = (teams: Equipo[], config: GlobalConfig): number => {
+    // Simulated schedule range
+    const startDate = new Date(2000, 0, 1, 8, 0, 0, 0); // Jan 1, 2000, 08:00
+    const endDate = new Date(2000, 0, 9, 8, 0, 0, 0);   // Jan 9, 2000, 08:00
+
+    // Real Dia 1 Start, from config
+    const dia1StartStr = config["Dia 1 Start"];
+    if (!dia1StartStr) {
+        throw new Error("Missing required config: Dia 1 Start");
+    }
+    const day1StartDate = new Date(dia1StartStr);
+
+    // Reset all team schedules
     teams.forEach(t => t.horario = []);
-    const descansos = generateDescansos(config)
-    descansos.forEach(descanso => assignGlobalEvent(descanso.name, descanso.start, descanso.duration, teams))
+
+    // Generate descansos based on config, then normalize them linearly to the test timeline
+    const descansos = generateDescansos(config);
+    const normalizedDescansos = normalizeDescansosLinear(descansos, day1StartDate, startDate);
+
+    // Assign descansos as global events
+    normalizedDescansos.forEach(descanso =>
+        assignGlobalEvent(descanso.name, descanso.start, descanso.duration, teams)
+    );
 
     // === SCHEDULING LOGIC ===
     const registroDurations = {
@@ -88,23 +121,27 @@ export const calculateTime = (teams: Equipo[], config: GlobalConfig): number => 
         config["Nº de carreras a la vez"]
     );
 
-    // ... (add all other assigners here, e.g. portfolios, verball, etc.)
+    // ... (other assigners: portfolios, verbal, eliminatorias, etc.)
 
     // Ceremonia de Clausura
     const latestEnd = findLatestEnd(teams);
-    const cierreStart = latestEnd;
     assignGlobalEvent(
         "Ceremonia de Clausura y Premios",
-        cierreStart,
+        latestEnd,
         config["Duración Ceremonia de Clausura y Premios"],
         teams
     );
 
-    // Find latest event end among all teams
+    // Find latest event end among all teams for total duration calculation
     const finalEnd = findLatestEnd(teams);
+    for (const team of teams) {
+        for (const event of team.horario) {
+            console.log(`Team: ${team.nombre}, Event: ${event.nombre}, Start: ${event.start}, End: ${event.end}`);
+        }
+    }
 
-    // Calculate duration in minutes
+    // Calculate duration in minutes (total elapsed time from test start to last event)
     const durationMinutes = Math.round((finalEnd.getTime() - startDate.getTime()) / (1000 * 60));
-
+    console.log(durationMinutes);
     return durationMinutes;
 };
