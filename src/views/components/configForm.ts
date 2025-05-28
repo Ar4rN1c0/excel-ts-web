@@ -28,7 +28,7 @@ export async function createConfigForm(): Promise<GlobalConfig> {
         form.style.border = "1px solid #ccc";
         form.style.margin = "2em";
 
-        // Make sure "NumberOfDays" is spelled exactly as used everywhere
+        // Static fields as before
         const staticFields: (keyof StaticConfig)[] = [
             "Nº equipos de Entry",
             "Nº equipos de Development",
@@ -63,7 +63,7 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             "Duración Carrera Development",
             "Duración Carrera Professional",
             "Tiempo Eliminatorias",
-            "Nº de carreras a la vez",
+            "Nº de carreras a la vez"
         ];
 
         function labeledInput(label: string, name: string, type = 'number') {
@@ -84,7 +84,7 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             return { div, input };
         }
 
-        const inputs: { [key: string]: HTMLInputElement } = {};
+        const inputs: { [key: string]: HTMLInputElement | HTMLSelectElement } = {};
         for (const field of staticFields) {
             const { div, input } = labeledInput(field, field);
             inputs[field] = input;
@@ -122,6 +122,91 @@ export async function createConfigForm(): Promise<GlobalConfig> {
         descansosContainer.appendChild(addDescansoBtn);
 
         let descansos: { name: string; start: string; end: string }[] = [];
+
+        // ====== Dia de Escrutinio ======
+        const diaEscrutinioDiv = document.createElement('div');
+        diaEscrutinioDiv.style.marginBottom = "1em";
+        const diaEscrutinioLabel = document.createElement('label');
+        diaEscrutinioLabel.textContent = "Dia de Escrutinio: ";
+        diaEscrutinioLabel.htmlFor = "Dia de Escrutinio";
+        const diaEscrutinioInput = document.createElement('input');
+        diaEscrutinioInput.type = 'date';
+        diaEscrutinioInput.name = "Dia de Escrutinio";
+        diaEscrutinioInput.id = "Dia de Escrutinio";
+        diaEscrutinioInput.style.marginLeft = "1em";
+        diaEscrutinioInput.style.width = "12em";
+        diaEscrutinioDiv.appendChild(diaEscrutinioLabel);
+        diaEscrutinioDiv.appendChild(diaEscrutinioInput);
+        form.appendChild(diaEscrutinioDiv);
+        inputs["Dia de Escrutinio"] = diaEscrutinioInput;
+
+        // ====== Modalidad de Escrutinio ======
+        const modalidadDiv = document.createElement('div');
+        modalidadDiv.style.marginBottom = "1em";
+        const modalidadLabel = document.createElement('label');
+        modalidadLabel.textContent = "Modalidad de Escrutinio: ";
+        modalidadLabel.htmlFor = "Modalidad de Escrutinio";
+        const modalidadSelect = document.createElement('select');
+        modalidadSelect.name = "Modalidad de Escrutinio";
+        modalidadSelect.id = "Modalidad de Escrutinio";
+        ["Estructurado", "Desestructurado"].forEach(optVal => {
+            const opt = document.createElement('option');
+            opt.value = optVal;
+            opt.textContent = optVal;
+            modalidadSelect.appendChild(opt);
+        });
+        modalidadSelect.required = true;
+        modalidadSelect.style.marginLeft = "1em";
+        modalidadDiv.appendChild(modalidadLabel);
+        modalidadDiv.appendChild(modalidadSelect);
+        form.appendChild(modalidadDiv);
+        inputs["Modalidad de Escrutinio"] = modalidadSelect;
+
+        // ====== Dynamic Circuit Fields ("Duración Escrutinio Fase N") ======
+        const circuitosContainer = document.createElement('div');
+        circuitosContainer.style.margin = "2em 0";
+        circuitosContainer.innerHTML = `<strong>Duración Escrutinio Fase (minutos):</strong><br>`;
+        form.appendChild(circuitosContainer);
+
+        const addCircuitoBtn = document.createElement('button');
+        addCircuitoBtn.type = "button";
+        addCircuitoBtn.textContent = "+ Añadir fase de escrutinio";
+        addCircuitoBtn.style.display = "block";
+        addCircuitoBtn.style.marginBottom = "1em";
+        circuitosContainer.appendChild(addCircuitoBtn);
+
+        let circuitos: { fase: number; duracion: number | '' }[] = [];
+
+        // Visibility function for circuitos section
+        function updateCircuitosVisibility() {
+            if ((inputs["Modalidad de Escrutinio"] as HTMLSelectElement).value === "Desestructurado") {
+                circuitosContainer.style.display = "";
+            } else {
+                circuitosContainer.style.display = "none";
+            }
+        }
+
+        // Save all inputs (static, rounds, days, descansos, circuitos) to cookie
+        function saveAllInputsToCookie() {
+            const data: { [key: string]: string } = {};
+            Object.keys(inputs).forEach(key => {
+                data[key] = (inputs[key] as HTMLInputElement | HTMLSelectElement).value;
+            });
+            // Save descansos
+            descansos.forEach(d => {
+                if (d.name) {
+                    data[`Descanso ${d.name} Start`] = d.start;
+                    data[`Descanso ${d.name} End`] = d.end;
+                }
+            });
+            // Save circuitos
+            circuitos.forEach(c => {
+                if (c.fase && c.duracion !== '') {
+                    data[`Duración Escrutinio Fase ${c.fase}`] = String(c.duracion);
+                }
+            });
+            saveToCookie(data);
+        }
 
         // Restore from cookie
         const saved = loadFromCookie();
@@ -195,26 +280,58 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             saveAllInputsToCookie();
         };
 
-        // Save all inputs (static, rounds, days, descansos) to cookie
-        function saveAllInputsToCookie() {
-            const data: { [key: string]: string } = {};
-            Object.keys(inputs).forEach(key => {
-                data[key] = inputs[key].value;
+        // === CIRCUITOS ===
+        function renderCircuitos() {
+            circuitosContainer.querySelectorAll('.circuito-row').forEach(el => el.remove());
+            circuitos.forEach((circuito, idx) => {
+                const row = document.createElement('div');
+                row.className = 'circuito-row';
+                row.style.marginBottom = '1em';
+
+                const label = document.createElement('label');
+                label.textContent = `Duración Fase ${circuito.fase}: `;
+                label.style.marginRight = '0.5em';
+
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '0';
+                input.value = circuito.duracion === '' ? '' : String(circuito.duracion);
+                input.required = true;
+                input.style.width = '7em';
+                input.oninput = () => {
+                    circuitos[idx].duracion = input.value === '' ? '' : Number(input.value);
+                    saveAllInputsToCookie();
+                };
+
+                // Remove button
+                const removeBtn = document.createElement('button');
+                removeBtn.type = 'button';
+                removeBtn.textContent = 'Eliminar';
+                removeBtn.style.marginLeft = '1em';
+                removeBtn.onclick = () => {
+                    circuitos.splice(idx, 1);
+                    renderCircuitos();
+                    saveAllInputsToCookie();
+                };
+
+                row.appendChild(label);
+                row.appendChild(input);
+                row.appendChild(removeBtn);
+                circuitosContainer.appendChild(row);
             });
-            // Save descansos with special keys
-            descansos.forEach(d => {
-                if (d.name) {
-                    data[`Descanso ${d.name} Start`] = d.start;
-                    data[`Descanso ${d.name} End`] = d.end;
-                }
-            });
-            saveToCookie(data);
         }
 
-        // Restore static, rounds, and descansos
+        addCircuitoBtn.onclick = () => {
+            let maxFase = circuitos.length > 0 ? Math.max(...circuitos.map(c => c.fase)) : 0;
+            circuitos.push({ fase: maxFase + 1, duracion: '' });
+            renderCircuitos();
+            saveAllInputsToCookie();
+        };
+
+        // Restore static, rounds, descansos, dia escrutinio, modalidad, circuitos
         if (saved) {
             Object.entries(saved).forEach(([key, value]) => {
-                if (inputs[key]) inputs[key].value = value;
+                if (inputs[key]) (inputs[key] as HTMLInputElement | HTMLSelectElement).value = value;
             });
             // Restore descansos from saved keys
             const descansoNames = Object.keys(saved)
@@ -225,10 +342,21 @@ export async function createConfigForm(): Promise<GlobalConfig> {
                 start: saved[`Descanso ${name} Start`] || '',
                 end: saved[`Descanso ${name} End`] || ''
             }));
+            // Restore circuitos
+            const circuitoFases = Object.keys(saved)
+                .filter(key => key.startsWith("Duración Escrutinio Fase "))
+                .map(key => Number(key.replace("Duración Escrutinio Fase ", "")))
+                .filter(n => !isNaN(n));
+            circuitos = circuitoFases.map(fase => ({
+                fase,
+                duracion: saved[`Duración Escrutinio Fase ${fase}`] !== undefined
+                    ? Number(saved[`Duración Escrutinio Fase ${fase}`])
+                    : ''
+            }));
         }
 
         function updateDayFieldsAndRestore(savedData?: { [key: string]: string }) {
-            const val = Number(inputs["NumberOfDays"]?.value);
+            const val = Number((inputs["NumberOfDays"] as HTMLInputElement).value);
             daysContainer.innerHTML = '';
             if (val && val > 0) {
                 for (let i = 1; i <= val; i++) {
@@ -260,10 +388,13 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             }
         }
 
-        // Add change listeners to all static fields and rounds
+        // Add change listeners to all static fields, rounds, etc
         Object.values(inputs).forEach(input => {
             input.addEventListener('input', saveAllInputsToCookie);
         });
+
+        // Modalidad de Escrutinio triggers visibility update
+        modalidadSelect.addEventListener('change', updateCircuitosVisibility);
 
         // Attach NumberOfDays handler if field exists
         if (inputs["NumberOfDays"]) {
@@ -271,8 +402,10 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             updateDayFieldsAndRestore(saved);
         }
 
-        // Render descansos after possible restore
+        // Render descansos and circuitos after possible restore
         renderDescansos();
+        renderCircuitos();
+        updateCircuitosVisibility();
 
         // Submit button
         const submit = document.createElement('button');
@@ -286,29 +419,41 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             ev.preventDefault();
             const config: any = {};
             for (const field of staticFields) {
-                config[field] = Number(inputs[field].value);
+                config[field] = Number((inputs[field] as HTMLInputElement).value);
             }
             // Rounds
             config.rounds = {
-                Entry: Number(inputs["rounds.Entry"].value),
-                Development: Number(inputs["rounds.Development"].value),
-                Professional: Number(inputs["rounds.Professional"].value),
+                Entry: Number((inputs["rounds.Entry"] as HTMLInputElement).value),
+                Development: Number((inputs["rounds.Development"] as HTMLInputElement).value),
+                Professional: Number((inputs["rounds.Professional"] as HTMLInputElement).value),
             };
             // Dynamic days
-            const numDays = Number(inputs["NumberOfDays"].value);
+            const numDays = Number((inputs["NumberOfDays"] as HTMLInputElement).value);
             for (let i = 1; i <= numDays; i++) {
                 ["Start", "End"].forEach(part => {
                     const key = `Dia ${i} ${part}`;
-                    config[key] = inputs[key].value;
+                    config[key] = (inputs[key] as HTMLInputElement)?.value ?? '';
                 });
             }
-            // Add descansos as dynamic fields
+            // Descansos
             descansos.forEach(d => {
                 if (d.name && d.start && d.end) {
                     config[`Descanso ${d.name} Start`] = d.start;
                     config[`Descanso ${d.name} End`] = d.end;
                 }
             });
+            // Dia de escrutinio
+            config["Dia de Escrutinio"] = (inputs["Dia de Escrutinio"] as HTMLInputElement).value || undefined;
+            // Modalidad de escrutinio
+            config["Modalidad de Escrutinio"] = (inputs["Modalidad de Escrutinio"] as HTMLSelectElement).value;
+            // Circuitos dinámicos only if desestructurado
+            if (config["Modalidad de Escrutinio"] === "Desestructurado") {
+                circuitos.forEach(c => {
+                    if (c.fase && c.duracion !== '') {
+                        config[`Duración Escrutinio Fase ${c.fase}`] = Number(c.duracion);
+                    }
+                });
+            }
             form.remove();
             resolve(config as GlobalConfig);
         };

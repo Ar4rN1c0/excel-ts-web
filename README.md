@@ -11,7 +11,7 @@ This project is a complete scheduling system for organizing and managing **multi
   - Scrutiny
   - Technical and Enterprise Portfolios
   - Verbal Presentations
-  - Races (qualifiers & eliminations)
+  - Races (qualifiers)
   - Global events (e.g., opening talks, award ceremonies)
 - 👨‍⚖️ Judge allocation with concurrency rules
 - ⏱️ Collision-free time-slot scheduling

@@ -36,8 +36,8 @@ function normalizeDescansosLinear(
 
 export const calculateTime = (teams: Equipo[], config: GlobalConfig): number => {
     // Simulated schedule range
-    const startDate = new Date(2000, 0, 1, 8, 0, 0, 0); // Jan 1, 2000, 08:00
-    const endDate = new Date(2000, 0, 9, 8, 0, 0, 0);   // Jan 9, 2000, 08:00
+    const startDate = new Date(2000, 0, 1, 8, 0, 0, 0);
+    const endDate = new Date(2000, 0, 9, 8, 0, 0, 0);   
 
     // Real Dia 1 Start, from config
     const dia1StartStr = config["Dia 1 Start"];

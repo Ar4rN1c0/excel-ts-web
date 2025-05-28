@@ -55,7 +55,9 @@ export const config: GlobalConfig = {
     "Development": 4,
     "Professional": 4
   },
-  "Nº de carreras a la vez": 2
+  "Nº de carreras a la vez": 2,
+  "Modalidad de Escrutinio": "Estructurado",
+  "Dia de Escrutinio": "2025-06-17"
 }
 
 async function test() {

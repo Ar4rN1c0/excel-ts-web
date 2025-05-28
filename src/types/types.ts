@@ -55,6 +55,10 @@ export type DynamicDescansoFields = {
   [key in `Descanso ${string} ${"Start" | "End"}`]?: string;
 };
 
+export type DynamicCircuitFields = {
+  [key in `Duración Escrutinio Fase ${number}`]?: number
+}
+
 
 // Este tipo define la estructura fija del objeto
 export interface StaticConfig {
@@ -92,6 +96,8 @@ export interface StaticConfig {
   "Duración Carrera Professional": number;
   "Tiempo Eliminatorias": number;
   "Nº de carreras a la vez": number;
+  "Dia de Escrutinio"?: string,
+  "Modalidad de Escrutinio": "Estructurado" | "Desestructurado"
   rounds: {
     Entry: number;
     Development: number;
@@ -100,7 +106,7 @@ export interface StaticConfig {
 }
 
 // Tipo final combinando estructura fija y campos dinámicos
-export type GlobalConfig = StaticConfig & DynamicDayFields & DynamicDescansoFields;
+export type GlobalConfig = StaticConfig & DynamicDayFields & DynamicDescansoFields & DynamicCircuitFields;
 
 export type Priorities = {
   [K in Categoria]?: number;

@@ -21,21 +21,12 @@ export const multipleDaySchedule = (
     const startPrices = new Date(
         windows[numOfDays - 1][1].getTime() - mins(90)
     );
-    const descansos = generateDescansos(config)
+    const descansos = generateDescansos(config);
 
     descansos.forEach(descanso => {
         assignGlobalEvent(descanso.name, descanso.start, descanso.duration, teams)
-    })
-
-    console.log("teams descanso", teams)
-
-    /*
-        Since the rest of the events will not be placed on top of previous ones,
-        the best way to simulate multi day is by forcing the gaps between days to be occupied
-        hence the scheduler will respect them and not put anything on top.
-        The "Descanso" are removed after assigning the rest of the events and outputing excels
-    */
-    assignDescansos(windows, teams)
+    });
+    assignDescansos(windows, teams);
 
     const registroDurations = {
         Entry: config["Duración registro"],
@@ -43,108 +34,225 @@ export const multipleDaySchedule = (
         Professional: config["Duración registro"]
     };
 
-    const endRegisterDate = assignSmallEvent(
-        teams,
-        windows[0][0],   // from Day 1 start
-        startPrices,     // until just before the “startPrices” cutoff
-        personelRegister,// how many counters in parallel
-        registroDurations,
-        "Registro"
-    );
+    if (config["Dia de Escrutinio"]) {
+        // =============== DAY 1: Registro & Escrutinio Only ==================
+        const day1Start = windows[0][0];
+        const day1End = windows[0][1];
 
-
-    // 3) The rest of your global events
-    const endCharla = assignGlobalEvent(
-        "Charla/Presentación",
-        endRegisterDate,
-        config["Duración Charla/Presentación"],
-        teams
-    );
-
-    const endPitDisplay = assignGlobalEvent(
-        "Pit Display",
-        endCharla,
-        config["Duración Montaje del Pit Display"],
-        teams
-    );
-
-    // 4) All the concurrent small events (Scrutiny, Portfolios, Verbal)
-    assignSmallEvent(
-        teams,
-        endRegisterDate,
-        startPrices,
-        judgesScrutiny.length,
-        {
-            Development: config["Duración Escrutinio Development"],
-            Entry: config["Duración Escrutinio Entry"],
-            Professional: config["Duración Escrutinio Professional"]
-        },
-        "Escrutinio",
-        { Entry: 0 }
-    );
-
-    assignClassificatoryRaces(teams, {
-        duration: {
-            Entry: config["Duración Carrera Entry"],
-            Development: config["Duración Carrera Development"],
-            Professional: config["Duración Carrera Professional"]
-        },
-        heatsPerCategory: {
-            Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
-            Development: { max: 2, min: 2 },
-            Professional: { max: 2, min: 2 }
-        },
-    }, endPitDisplay, startPrices, config["Nº de carreras a la vez"]);
-
-    try {
-        assignSmallEvent(
+        const endRegisterDate = assignSmallEvent(
             teams,
-            endPitDisplay,
-            startPrices,
-            judgesPortfolioTecnico.length,
-            {
-                Development: config["Duración Portfolio Técnico Development"],
-                Entry: config["Duración Portfolio Técnico Entry"],
-                Professional: config["Duración Portfolio Técnico Professional"]
-            },
-            "Portfolio Técnico"
+            day1Start,
+            day1End,
+            personelRegister,
+            registroDurations,
+            "Registro"
         );
 
         assignSmallEvent(
             teams,
-            endPitDisplay,
-            startPrices,
-            judgesPortfolioEmpresa.length,
+            endRegisterDate,
+            day1End,
+            judgesScrutiny.length,
             {
-                Entry: config["Duración Portfolio Empresa Entry"],
-                Development: config["Duración Portfolio Empresa Development"],
-                Professional: config["Duración Portfolio Empresa Professional"]
+                Development: config["Duración Escrutinio Development"],
+                Entry: config["Duración Escrutinio Entry"],
+                Professional: config["Duración Escrutinio Professional"]
             },
-            "Portfolio de Empresa"
+            "Escrutinio",
+            { Entry: 0 }
+        );
+
+        // =============== DAY 2+: Charla, Pit Display, THEN Everything Else ===
+        if (windows.length < 2) {
+            throw new Error("Se requiere al menos dos días para Dia de Escrutinio.");
+        }
+
+        // Start events on day 2
+        const day2Start = windows[1][0];
+
+        // 1) Charla/Presentación
+        const endCharla = assignGlobalEvent(
+            "Charla/Presentación",
+            day2Start,
+            config["Duración Charla/Presentación"],
+            teams
+        );
+
+        // 2) Pit Display (immediately after Charla)
+        const endPitDisplay = assignGlobalEvent(
+            "Pit Display",
+            endCharla,
+            config["Duración Montaje del Pit Display"],
+            teams
+        );
+
+        // 3) Classificatory races, portfolios, verbal PRESENTATIONS after Pit Display until 'startPrices'
+        assignClassificatoryRaces(teams, {
+            duration: {
+                Entry: config["Duración Carrera Entry"],
+                Development: config["Duración Carrera Development"],
+                Professional: config["Duración Carrera Professional"]
+            },
+            heatsPerCategory: {
+                Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
+                Development: { max: 2, min: 2 },
+                Professional: { max: 2, min: 2 }
+            },
+        }, endPitDisplay, startPrices, config["Nº de carreras a la vez"]);
+
+        try {
+            assignSmallEvent(
+                teams,
+                endPitDisplay,
+                startPrices,
+                judgesPortfolioTecnico.length,
+                {
+                    Development: config["Duración Portfolio Técnico Development"],
+                    Entry: config["Duración Portfolio Técnico Entry"],
+                    Professional: config["Duración Portfolio Técnico Professional"]
+                },
+                "Portfolio Técnico"
+            );
+
+            assignSmallEvent(
+                teams,
+                endPitDisplay,
+                startPrices,
+                judgesPortfolioEmpresa.length,
+                {
+                    Entry: config["Duración Portfolio Empresa Entry"],
+                    Development: config["Duración Portfolio Empresa Development"],
+                    Professional: config["Duración Portfolio Empresa Professional"]
+                },
+                "Portfolio de Empresa"
+            );
+
+            assignSmallEvent(
+                teams,
+                endPitDisplay,
+                startPrices,
+                judgesVerbal.length,
+                {
+                    Entry: config["Duración Presentación Verbal Entry"],
+                    Development: config["Duración Presentación Verbal Development"],
+                    Professional: config["Duración Presentación Verbal Professional"]
+                },
+                "Presentación Verbal"
+            );
+        } catch (error) {
+            console.error(error);
+        }
+
+        // 4) Closing Ceremony at the end
+        assignGlobalEvent(
+            "Ceremonia de Clausura y Premios",
+            startPrices,
+            config["Duración Ceremonia de Clausura y Premios"],
+            teams
+        );
+
+    } else {
+        // =============== STANDARD MULTI-DAY (NO SCRUTINIO DAY) ==============
+        const endRegisterDate = assignSmallEvent(
+            teams,
+            windows[0][0],
+            startPrices,
+            personelRegister,
+            registroDurations,
+            "Registro"
+        );
+
+        const endCharla = assignGlobalEvent(
+            "Charla/Presentación",
+            endRegisterDate,
+            config["Duración Charla/Presentación"],
+            teams
+        );
+
+        const endPitDisplay = assignGlobalEvent(
+            "Pit Display",
+            endCharla,
+            config["Duración Montaje del Pit Display"],
+            teams
         );
 
         assignSmallEvent(
             teams,
-            endPitDisplay,
+            endRegisterDate,
             startPrices,
-            judgesVerbal.length,
+            judgesScrutiny.length,
             {
-                Entry: config["Duración Presentación Verbal Entry"],
-                Development: config["Duración Presentación Verbal Development"],
-                Professional: config["Duración Presentación Verbal Professional"]
+                Development: config["Duración Escrutinio Development"],
+                Entry: config["Duración Escrutinio Entry"],
+                Professional: config["Duración Escrutinio Professional"]
             },
-            "Presentación Verbal"
+            "Escrutinio",
+            { Entry: 0 }
         );
-    } catch (error) {
-        console.error(error);
+
+        assignClassificatoryRaces(teams, {
+            duration: {
+                Entry: config["Duración Carrera Entry"],
+                Development: config["Duración Carrera Development"],
+                Professional: config["Duración Carrera Professional"]
+            },
+            heatsPerCategory: {
+                Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
+                Development: { max: 2, min: 2 },
+                Professional: { max: 2, min: 2 }
+            },
+        }, endPitDisplay, startPrices, config["Nº de carreras a la vez"]);
+
+        try {
+            assignSmallEvent(
+                teams,
+                endPitDisplay,
+                startPrices,
+                judgesPortfolioTecnico.length,
+                {
+                    Development: config["Duración Portfolio Técnico Development"],
+                    Entry: config["Duración Portfolio Técnico Entry"],
+                    Professional: config["Duración Portfolio Técnico Professional"]
+                },
+                "Portfolio Técnico"
+            );
+
+            assignSmallEvent(
+                teams,
+                endPitDisplay,
+                startPrices,
+                judgesPortfolioEmpresa.length,
+                {
+                    Entry: config["Duración Portfolio Empresa Entry"],
+                    Development: config["Duración Portfolio Empresa Development"],
+                    Professional: config["Duración Portfolio Empresa Professional"]
+                },
+                "Portfolio de Empresa"
+            );
+
+            assignSmallEvent(
+                teams,
+                endPitDisplay,
+                startPrices,
+                judgesVerbal.length,
+                {
+                    Entry: config["Duración Presentación Verbal Entry"],
+                    Development: config["Duración Presentación Verbal Development"],
+                    Professional: config["Duración Presentación Verbal Professional"]
+                },
+                "Presentación Verbal"
+            );
+        } catch (error) {
+            console.error(error);
+        }
+
+        assignGlobalEvent(
+            "Ceremonia de Clausura y Premios",
+            startPrices,
+            config["Duración Ceremonia de Clausura y Premios"],
+            teams
+        );
     }
 
-    assignGlobalEvent(
-        "Ceremonia de Clausura y Premios",
-        startPrices,
-        config["Duración Ceremonia de Clausura y Premios"],
-        teams
-    );
-
-    console.log(teams, "finall")
-}
+    console.log(teams, "final");
+};

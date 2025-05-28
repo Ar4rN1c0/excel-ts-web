@@ -48,7 +48,11 @@ export const dummyConfig: GlobalConfig = {
     "Nº de carreras a la vez": 1,
     "Duración Carrera Development": 10,
     "Duración Carrera Entry": 10,
-    "Duración Carrera Professional": 10
+    "Duración Carrera Professional": 10,
+    "Modalidad de Escrutinio": "Desestructurado",
+    "Duración Escrutinio Fase 1": 10,
+    "Duración Escrutinio Fase 2": 10,
+    "Duración Escrutinio Fase 3": 10,
 }
 
 const showResult = (minsTaken: number) => {
