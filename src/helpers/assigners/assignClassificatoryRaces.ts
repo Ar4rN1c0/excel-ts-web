@@ -103,8 +103,9 @@ export const assignClassificatoryRaces = (
     // If all race slots are busy, advance to the soonest available slot
     if (heap.size() >= maxRaces) {
       earliest = heap.peek();
-      // Remove all races ending at this time
-      while (heap.size() && heap.peek() <= earliest) heap.pop();
+      // Remove only one race ending at this time
+      heap.pop();
+      // Note: We do NOT remove all races at this time, only one slot per new assignment
     }
 
     // Find available windows for both teams

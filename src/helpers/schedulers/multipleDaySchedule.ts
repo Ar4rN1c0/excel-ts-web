@@ -6,8 +6,9 @@ import { assignPortfoliosAndVerbal } from "../assigners/assignPortfoliosAndVerba
 import { assignSmallEvent } from "../assigners/assignSmallEvent";
 import { generateDescansos } from "../generators/generateDescansos";
 import { mins } from "../math/math";
+import { assignPipelinedScrutiny } from "../assigners/assignPipelinedScrutiny";
+import { assignPipelinedDesestructuradoScrutiny } from "../assigners/assignDesestructuradoPipelinedScrutiny";
 
-// Helper to extract dynamic phase durations for desestructurado
 function getDesestructuradoPhases(config: GlobalConfig): number[] {
     const phaseDurations: number[] = [];
     let phase = 1;
@@ -18,59 +19,6 @@ function getDesestructuradoPhases(config: GlobalConfig): number[] {
         phase++;
     }
     return phaseDurations;
-}
-
-// Pipeline scheduler for desestructurado (returns end date)
-function assignDesestructuradoEscrutinio(
-    teams: Equipo[],
-    start: Date,
-    end: Date,
-    phaseDurations: number[],
-    judgesCount: number
-) {
-    if (judgesCount !== phaseDurations.length) {
-        throw new Error("Nº de Jueces para el escrutinio debe coincidir con nº de fases en desestructurado");
-    }
-    const nTeams = teams.length;
-    let teamStartTimes: Date[] = [];
-    let current = new Date(start);
-
-    // Calcular el inicio de la fase 1 para cada equipo
-    for (let i = 0; i < nTeams; i++) {
-        teamStartTimes.push(new Date(current));
-        // Siguiente equipo entra cuando el anterior termina la fase 1
-        current = new Date(current.getTime() + phaseDurations[0] * 60000);
-    }
-
-    // Asignar las fases de escrutinio al horario de cada equipo
-    for (let t = 0; t < nTeams; t++) {
-        let phaseStart = new Date(teamStartTimes[t]);
-        if (!Array.isArray((teams[t] as any).horario)) {
-            (teams[t] as any).horario = [];
-        }
-        for (let p = 0; p < phaseDurations.length; p++) {
-            const phaseEnd = new Date(phaseStart.getTime() + phaseDurations[p] * 60000);
-            (teams[t] as any).horario.push({
-                nombre: `Escrutinio Fase ${p + 1}`,
-                fase: p + 1,
-                tipo: "Concurrent Activity",
-                start: new Date(phaseStart),
-                end: new Date(phaseEnd),
-                duracion: phaseDurations[p]
-            });
-            phaseStart = new Date(phaseEnd);
-        }
-    }
-
-    // El evento termina cuando el último equipo termina su última fase
-    let lastTeamEnd = new Date(teamStartTimes[nTeams - 1]);
-    for (let p = 0; p < phaseDurations.length; p++) {
-        lastTeamEnd = new Date(lastTeamEnd.getTime() + phaseDurations[p] * 60000);
-    }
-    if (lastTeamEnd > end) {
-        throw new Error("No hay tiempo suficiente para completar todas las fases de escrutinio desestructurado");
-    }
-    return lastTeamEnd;
 }
 
 export const multipleDaySchedule = (
@@ -84,16 +32,18 @@ export const multipleDaySchedule = (
     config: GlobalConfig
 ) => {
     const numOfDays = config.NumberOfDays;
-    const startPrices = new Date(
-        windows[numOfDays - 1][1].getTime() - mins(90)
-    );
-    const descansos = generateDescansos(config);
+    const ceremonyDuration = config["Duración Ceremonia de Clausura y Premios"];
+    const ceremonyStart = new Date(windows[numOfDays - 1][1].getTime() - mins(ceremonyDuration));
+    // Removed unused ceremonyEnd variable
 
+    // --- Descansos assignment ---
+    const descansos = generateDescansos(config);
     descansos.forEach(descanso => {
         assignGlobalEvent(descanso.name, descanso.start, descanso.duration, teams)
     });
     assignDescansos(windows, teams);
 
+    // Registro
     const registroDurations = {
         Entry: config["Duración registro"],
         Development: config["Duración registro"],
@@ -101,11 +51,11 @@ export const multipleDaySchedule = (
     };
 
     if (config["Dia de Escrutinio"]) {
-        // =============== DAY 1: Registro & Escrutinio Only ==================
+        // ========================== CON DÍA DE ESCRUTINIO ==========================
         const day1Start = windows[0][0];
         const day1End = windows[0][1];
 
-        const endRegisterDate = assignSmallEvent(
+        assignSmallEvent(
             teams,
             day1Start,
             day1End,
@@ -113,57 +63,62 @@ export const multipleDaySchedule = (
             registroDurations,
             "Registro"
         );
+        const registerEnds: Date[] = teams.map(
+            t => ((t as any).horario.find((e: any) => e.nombre === "Registro")?.end)
+        );
 
-        // Escrutinio Day: Use modal logic
-        let endEscrutinio: Date;
-        if (config["Modalidad de Escrutinio"] === "Desestructurado") {
-            // Extract all phase durations dynamically
-            const phases = getDesestructuradoPhases(config);
-            endEscrutinio = assignDesestructuradoEscrutinio(
+        if (config["Modalidad de Escrutinio"] === "Estructurado") {
+            assignPipelinedScrutiny(
                 teams,
-                endRegisterDate,
-                day1End,
-                phases,
-                judgesScrutiny.length
-            );
-        } else {
-            // Original: Estructurado
-            endEscrutinio = assignSmallEvent(
-                teams,
-                endRegisterDate,
+                registerEnds,
                 day1End,
                 judgesScrutiny.length,
                 {
                     Development: config["Duración Escrutinio Development"],
                     Entry: config["Duración Escrutinio Entry"],
                     Professional: config["Duración Escrutinio Professional"]
-                },
-                "Escrutinio",
-                { Entry: 0 }
+                }
+            );
+        } else {
+            const phases = getDesestructuradoPhases(config);
+            if (phases.length !== judgesScrutiny.length) {
+                throw new Error("Nº de Jueces para el escrutinio debe coincidir con nº de fases en desestructurado");
+            }
+            assignPipelinedDesestructuradoScrutiny(
+                teams,
+                registerEnds,
+                day1End,
+                phases
             );
         }
 
-        // =============== DAY 2+: Charla, Pit Display, THEN Everything Else ===
+        // SIGUIENTE DÍA: charla, pit display, todo lo demás
         if (windows.length < 2) {
             throw new Error("Se requiere al menos dos días para Dia de Escrutinio.");
         }
-        const day2Start = windows[1][0];
 
-        // 1) Charla/Presentación
+        const nextDayStart = windows[1][0];
+
         const endCharla = assignGlobalEvent(
             "Charla/Presentación",
-            day2Start,
+            nextDayStart,
             config["Duración Charla/Presentación"],
             teams
         );
-        // 2) Pit Display
         const endPitDisplay = assignGlobalEvent(
             "Pit Display",
             endCharla,
             config["Duración Montaje del Pit Display"],
             teams
         );
-        // 3) Classificatory races, portfolios, verbal PRESENTATIONS after Pit Display until 'startPrices'
+
+        const actividadesStart = endPitDisplay;
+        const actividadesEnd = ceremonyStart;
+
+        if (actividadesStart >= actividadesEnd) {
+            throw new Error("No hay hueco suficiente para carreras, portfolios y presentaciones entre el Pit Display y la Ceremonia.");
+        }
+
         assignClassificatoryRaces(teams, {
             duration: {
                 Entry: config["Duración Carrera Entry"],
@@ -175,44 +130,45 @@ export const multipleDaySchedule = (
                 Development: { max: 2, min: 2 },
                 Professional: { max: 2, min: 2 }
             },
-        }, endPitDisplay, startPrices, config["Nº de carreras a la vez"]);
+        }, actividadesStart, actividadesEnd, config["Nº de carreras a la vez"]);
 
-        try {
-            assignPortfoliosAndVerbal(teams, endPitDisplay, startPrices, config, {
-                verbal: judgesVerbal,
-                empresa: judgesPortfolioEmpresa,
-                scrutiny: judgesScrutiny,
-                tecnico: judgesPortfolioTecnico
-            })
-        } catch (error) {
-            console.error(error);
-        }
+        assignPortfoliosAndVerbal(teams, actividadesStart, actividadesEnd, config, {
+            verbal: judgesVerbal,
+            empresa: judgesPortfolioEmpresa,
+            scrutiny: judgesScrutiny,
+            tecnico: judgesPortfolioTecnico
+        });
 
         assignGlobalEvent(
             "Ceremonia de Clausura y Premios",
-            startPrices,
-            config["Duración Ceremonia de Clausura y Premios"],
+            ceremonyStart,
+            ceremonyDuration,
             teams
         );
-
     } else {
-        // =============== STANDARD MULTI-DAY (NO SCRUTINIO DAY) ==============
-        const endRegisterDate = assignSmallEvent(
+        // ========================== SIN DÍA DE ESCRUTINIO ==========================
+        const regStart = windows[0][0];
+        const regEnd = windows[0][1];
+        assignSmallEvent(
             teams,
-            windows[0][0],
-            startPrices,
+            regStart,
+            regEnd,
             personelRegister,
             registroDurations,
             "Registro"
         );
+        const registerEnds: Date[] = teams.map(
+            t => ((t as any).horario.find((e: any) => e.nombre === "Registro")?.end)
+        );
 
+        // Charla y pit display justo tras registro (el máximo de los registros)
+        const charlaStart = new Date(Math.max(...registerEnds.map(d => d.getTime())));
         const endCharla = assignGlobalEvent(
             "Charla/Presentación",
-            endRegisterDate,
+            charlaStart,
             config["Duración Charla/Presentación"],
             teams
         );
-
         const endPitDisplay = assignGlobalEvent(
             "Pit Display",
             endCharla,
@@ -220,31 +176,35 @@ export const multipleDaySchedule = (
             teams
         );
 
-        // Escrutinio: modal logic here as well (optional, but for future-proofing)
-        if (config["Modalidad de Escrutinio"] === "Desestructurado") {
-            const phases = getDesestructuradoPhases(config);
-            assignDesestructuradoEscrutinio(
+        // -- El resto (scrutinio, carreras, portfolios, verbal) se puede asignar en paralelo --
+        // Scrutinio
+        if (config["Modalidad de Escrutinio"] === "Estructurado") {
+            assignPipelinedScrutiny(
                 teams,
-                endRegisterDate,
-                startPrices,
-                phases,
-                judgesScrutiny.length
-            );
-        } else {
-            assignSmallEvent(
-                teams,
-                endRegisterDate,
-                startPrices,
+                Array(teams.length).fill(endPitDisplay),
+                ceremonyStart,
                 judgesScrutiny.length,
                 {
                     Development: config["Duración Escrutinio Development"],
                     Entry: config["Duración Escrutinio Entry"],
                     Professional: config["Duración Escrutinio Professional"]
-                },
-                "Escrutinio",
-                { Entry: 0 }
+                }
+            );
+        } else {
+            const phases = getDesestructuradoPhases(config);
+            if (phases.length !== judgesScrutiny.length) {
+                throw new Error("Nº de Jueces para el escrutinio debe coincidir con nº de fases en desestructurado");
+            }
+            assignPipelinedDesestructuradoScrutiny(
+                teams,
+                Array(teams.length).fill(endPitDisplay),
+                ceremonyStart,
+                phases
             );
         }
+
+        const actividadesStart = endPitDisplay;
+        const actividadesEnd = ceremonyStart;
 
         assignClassificatoryRaces(teams, {
             duration: {
@@ -257,26 +217,21 @@ export const multipleDaySchedule = (
                 Development: { max: 2, min: 2 },
                 Professional: { max: 2, min: 2 }
             },
-        }, endPitDisplay, startPrices, config["Nº de carreras a la vez"]);
+        }, actividadesStart, actividadesEnd, config["Nº de carreras a la vez"]);
 
-        try {
-            assignPortfoliosAndVerbal(teams, endPitDisplay, startPrices, config, {
-                verbal: judgesVerbal,
-                empresa: judgesPortfolioEmpresa,
-                scrutiny: judgesScrutiny,
-                tecnico: judgesPortfolioTecnico
-            })
-        } catch (error) {
-            console.error(error);
-        }
+        assignPortfoliosAndVerbal(teams, actividadesStart, actividadesEnd, config, {
+            verbal: judgesVerbal,
+            empresa: judgesPortfolioEmpresa,
+            scrutiny: judgesScrutiny,
+            tecnico: judgesPortfolioTecnico
+        });
 
         assignGlobalEvent(
             "Ceremonia de Clausura y Premios",
-            startPrices,
-            config["Duración Ceremonia de Clausura y Premios"],
+            ceremonyStart,
+            ceremonyDuration,
             teams
         );
     }
-
-    console.log(teams, "final");
+    // --- FINAL: LOGGING PARA DEPURACIÓN --- (REMOVED)
 };
