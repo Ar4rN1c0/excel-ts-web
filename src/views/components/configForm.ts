@@ -1,10 +1,11 @@
+import { handleFileInputChange } from "../../helpers/fileType/excel/handleInputChange";
 import { getCookie, setCookie } from "../../helpers/storage/cookie";
-import { GlobalConfig, StaticConfig } from "../../types/types";
+import { Equipo, GlobalConfig, StaticConfig } from "../../types/types";
 
 const CONFIG_FORM_COOKIE = "configFormData";
 const COOKIE_EXPIRES_DAYS = 365;
 
-export async function createConfigForm(): Promise<GlobalConfig> {
+export async function createConfigForm(): Promise<{config: GlobalConfig, teams?: Equipo[]}> {
     return new Promise((resolve) => {
         document.getElementById('configForm')?.remove();
 
@@ -33,7 +34,6 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             "Nº equipos de Entry",
             "Nº equipos de Development",
             "Nº equipos de Professional",
-            "Nº de equipos que se clasifican",
             "Nº de Jueces para el portfolio técnico",
             "Nº de Jueces para el portfolio de empresa",
             "Nº de Jueces para el escrutinio",
@@ -62,7 +62,7 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             "Duración Carrera Entry",
             "Duración Carrera Development",
             "Duración Carrera Professional",
-            "Tiempo Eliminatorias",
+            "Duración Cómputo de Puntos",
             "Nº de carreras a la vez"
         ];
 
@@ -90,16 +90,6 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             inputs[field] = input;
             form.appendChild(div);
         }
-
-        // Rounds
-        const roundsDiv = document.createElement('div');
-        roundsDiv.innerHTML = `<strong>Rounds:</strong><br>`;
-        ['Entry', 'Development', 'Professional'].forEach(round => {
-            const { div, input } = labeledInput(`Rounds ${round}`, `rounds.${round}`);
-            inputs[`rounds.${round}`] = input;
-            roundsDiv.appendChild(div);
-        });
-        form.appendChild(roundsDiv);
 
         // Days container
         const daysContainer = document.createElement('div');
@@ -179,7 +169,8 @@ export async function createConfigForm(): Promise<GlobalConfig> {
 
         // Visibility function for circuitos section
         function updateCircuitosVisibility() {
-            if ((inputs["Modalidad de Escrutinio"] as HTMLSelectElement).value === "Desestructurado") {
+            // Swapped: now shown ONLY for Estructurado
+            if ((inputs["Modalidad de Escrutinio"] as HTMLSelectElement).value === "Estructurado") {
                 circuitosContainer.style.display = "";
             } else {
                 circuitosContainer.style.display = "none";
@@ -421,12 +412,7 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             for (const field of staticFields) {
                 config[field] = Number((inputs[field] as HTMLInputElement).value);
             }
-            // Rounds
-            config.rounds = {
-                Entry: Number((inputs["rounds.Entry"] as HTMLInputElement).value),
-                Development: Number((inputs["rounds.Development"] as HTMLInputElement).value),
-                Professional: Number((inputs["rounds.Professional"] as HTMLInputElement).value),
-            };
+    
             // Dynamic days
             const numDays = Number((inputs["NumberOfDays"] as HTMLInputElement).value);
             for (let i = 1; i <= numDays; i++) {
@@ -446,8 +432,8 @@ export async function createConfigForm(): Promise<GlobalConfig> {
             config["Dia de Escrutinio"] = (inputs["Dia de Escrutinio"] as HTMLInputElement).value || undefined;
             // Modalidad de escrutinio
             config["Modalidad de Escrutinio"] = (inputs["Modalidad de Escrutinio"] as HTMLSelectElement).value;
-            // Circuitos dinámicos only if desestructurado
-            if (config["Modalidad de Escrutinio"] === "Desestructurado") {
+            // Circuitos dinámicos only if estructurado
+            if (config["Modalidad de Escrutinio"] === "Estructurado") {
                 circuitos.forEach(c => {
                     if (c.fase && c.duracion !== '') {
                         config[`Duración Escrutinio Fase ${c.fase}`] = Number(c.duracion);
@@ -455,8 +441,42 @@ export async function createConfigForm(): Promise<GlobalConfig> {
                 });
             }
             form.remove();
-            resolve(config as GlobalConfig);
+            resolve({config: config as GlobalConfig, teams});
         };
+        // File input for Equipos Excel
+        const equiposFileDiv = document.createElement('div');
+        equiposFileDiv.style.marginBottom = "1em";
+
+        const equiposFileLabel = document.createElement('label');
+        equiposFileLabel.textContent = "Cargar archivo de equipos (Excel): ";
+        equiposFileLabel.htmlFor = "equiposFile";
+
+        const equiposFileInput = document.createElement('input');
+        equiposFileInput.type = 'file';
+        equiposFileInput.accept = '.xlsx, .xls';
+        equiposFileInput.id = 'equiposFile';
+        equiposFileInput.name = 'equiposFile';
+        equiposFileInput.style.marginLeft = '1em';
+
+        equiposFileDiv.appendChild(equiposFileLabel);
+        equiposFileDiv.appendChild(equiposFileInput);
+        form.appendChild(equiposFileDiv);
+        let teams: Equipo[]
+        equiposFileInput.addEventListener('change', (event) => {
+            handleFileInputChange(
+                event,
+                (processed) => {
+                    teams = processed.teams;
+                    alert(`Se cargaron ${teams.length} equipos.`);
+                },
+                (error) => {
+                    console.error(error);
+                    alert('Error al cargar los equipos desde el archivo Excel.');
+                }
+            );
+        });
+
+
 
         document.body.appendChild(form);
         form.scrollIntoView({ behavior: 'smooth' });

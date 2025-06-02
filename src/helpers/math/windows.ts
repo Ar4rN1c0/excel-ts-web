@@ -58,41 +58,53 @@ export const getAvailableWindows = (
   return ventanas;
 };
 
-export function getGlobalWindows(config: GlobalConfig) {
+// Type guard para validar fechas
+function isValidDate(val: any): val is Date {
+  return val instanceof Date && !isNaN(val.getTime());
+}
+
+export function getGlobalWindows(config: GlobalConfig): [Date, Date][] {
   const windows: [Date, Date][] = [];
 
   for (let i = 1; i <= config.NumberOfDays; i++) {
-    const startKey = `Dia ${i} Start`;
-    const endKey = `Dia ${i} End`;
+    const startKey = `Dia ${i} Start` as keyof GlobalConfig;
+    const endKey = `Dia ${i} End` as keyof GlobalConfig;
 
-    const start = config[startKey as keyof GlobalConfig];
-    const end = config[endKey as keyof GlobalConfig];
+    const startRaw = config[startKey];
+    const endRaw = config[endKey];
+
     let startDate: Date | null = null;
     let endDate: Date | null = null;
 
-    if (start instanceof Date && !isNaN(start as any)) {
-      startDate = start;
-    } else if (typeof start === "string") {
-      startDate = new Date(start);
+    // Procesar start
+    if (isValidDate(startRaw)) {
+      startDate = startRaw;
+    } else if (typeof startRaw === "string") {
+      const parsed = new Date(startRaw);
+      if (!isNaN(parsed.getTime())) {
+        startDate = parsed;
+      }
     }
 
-    if (end instanceof Date && !isNaN(end as any)) {
-      endDate = end;
-    } else if (typeof end === "string") {
-      endDate = new Date(end);
+    // Procesar end
+    if (isValidDate(endRaw)) {
+      endDate = endRaw;
+    } else if (typeof endRaw === "string") {
+      const parsed = new Date(endRaw);
+      if (!isNaN(parsed.getTime())) {
+        endDate = parsed;
+      }
     }
 
-    if (startDate && endDate && !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())) {
+    // Agregar ventana válida
+    if (startDate && endDate) {
       windows.push([startDate, endDate]);
     } else {
-      console.warn(`Skipping day ${i} due to invalid date values:`, start, end);
+      console.warn(`Skipping day ${i} due to invalid date values:`, startRaw, endRaw);
     }
-
-
   }
 
-
-  return windows
+  return windows;
 }
 
 // Función auxiliar para encontrar la primera ventana compartida

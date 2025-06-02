@@ -6,10 +6,11 @@ import { assignPortfoliosAndVerbal } from "../assigners/assignPortfoliosAndVerba
 import { assignSmallEvent } from "../assigners/assignSmallEvent";
 import { generateDescansos } from "../generators/generateDescansos";
 import { mins } from "../math/math";
-import { assignPipelinedScrutiny } from "../assigners/assignPipelinedScrutiny";
-import { assignPipelinedDesestructuradoScrutiny } from "../assigners/assignDesestructuradoPipelinedScrutiny";
+import { getLastEventEndBeforeCeremony } from "../math/calculateTime";
+import { assignDesestructuradoPipelinedScrutiny } from "../assigners/assignDesestructuradoPipelinedScrutiny";
+import { assignEstructuradoPipelinedScrutiny } from "../assigners/assignEstructuradoPipelinedScrutiny";
 
-function getDesestructuradoPhases(config: GlobalConfig): number[] {
+function getEstructuradoPhases(config: GlobalConfig): number[] {
     const phaseDurations: number[] = [];
     let phase = 1;
     while (true) {
@@ -67,8 +68,8 @@ export const multipleDaySchedule = (
             t => ((t as any).horario.find((e: any) => e.nombre === "Registro")?.end)
         );
 
-        if (config["Modalidad de Escrutinio"] === "Estructurado") {
-            assignPipelinedScrutiny(
+        if (config["Modalidad de Escrutinio"] === "Desestructurado") {
+            assignDesestructuradoPipelinedScrutiny(
                 teams,
                 registerEnds,
                 day1End,
@@ -80,11 +81,12 @@ export const multipleDaySchedule = (
                 }
             );
         } else {
-            const phases = getDesestructuradoPhases(config);
+            // Estructurado
+            const phases = getEstructuradoPhases(config);
             if (phases.length !== judgesScrutiny.length) {
-                throw new Error("Nº de Jueces para el escrutinio debe coincidir con nº de fases en desestructurado");
+                throw new Error("Nº de Jueces para el escrutinio debe coincidir con nº de fases en estructurado");
             }
-            assignPipelinedDesestructuradoScrutiny(
+            assignEstructuradoPipelinedScrutiny(
                 teams,
                 registerEnds,
                 day1End,
@@ -139,6 +141,17 @@ export const multipleDaySchedule = (
             tecnico: judgesPortfolioTecnico
         });
 
+        // ========== Añadir "Cómputo de Puntos" justo antes de la ceremonia ==========
+        const lastEnd = getLastEventEndBeforeCeremony(teams);
+        const puntoDuration = config["Duración Cómputo de Puntos"];
+        assignGlobalEvent(
+            "Cómputo de Puntos",
+            lastEnd,
+            puntoDuration,
+            teams
+        );
+
+        // Ceremonia de Clausura y Premios
         assignGlobalEvent(
             "Ceremonia de Clausura y Premios",
             ceremonyStart,
@@ -178,8 +191,8 @@ export const multipleDaySchedule = (
 
         // -- El resto (scrutinio, carreras, portfolios, verbal) se puede asignar en paralelo --
         // Scrutinio
-        if (config["Modalidad de Escrutinio"] === "Estructurado") {
-            assignPipelinedScrutiny(
+        if (config["Modalidad de Escrutinio"] === "Desestructurado") {
+            assignDesestructuradoPipelinedScrutiny(
                 teams,
                 Array(teams.length).fill(endPitDisplay),
                 ceremonyStart,
@@ -191,11 +204,12 @@ export const multipleDaySchedule = (
                 }
             );
         } else {
-            const phases = getDesestructuradoPhases(config);
+            // Estructurado
+            const phases = getEstructuradoPhases(config);
             if (phases.length !== judgesScrutiny.length) {
-                throw new Error("Nº de Jueces para el escrutinio debe coincidir con nº de fases en desestructurado");
+                throw new Error("Nº de Jueces para el escrutinio debe coincidir con nº de fases en estructurado");
             }
-            assignPipelinedDesestructuradoScrutiny(
+            assignEstructuradoPipelinedScrutiny(
                 teams,
                 Array(teams.length).fill(endPitDisplay),
                 ceremonyStart,
@@ -226,6 +240,17 @@ export const multipleDaySchedule = (
             tecnico: judgesPortfolioTecnico
         });
 
+        // ========== Añadir "Cómputo de Puntos" justo antes de la ceremonia ==========
+        const lastEnd = getLastEventEndBeforeCeremony(teams);
+        const puntoDuration = config["Duración Cómputo de Puntos"];
+        assignGlobalEvent(
+            "Cómputo de Puntos",
+            lastEnd,
+            puntoDuration,
+            teams
+        );
+
+        // Ceremonia de Clausura y Premios
         assignGlobalEvent(
             "Ceremonia de Clausura y Premios",
             ceremonyStart,

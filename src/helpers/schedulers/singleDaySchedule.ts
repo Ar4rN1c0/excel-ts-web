@@ -44,7 +44,6 @@ export function singleDaySchedule(
         config["Duración Montaje del Pit Display"],
         teams
     ) as Date;
-    console.log("Eeeooo")
 
     assignSmallEvent(
         teams,

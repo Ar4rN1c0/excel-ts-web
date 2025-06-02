@@ -5,7 +5,7 @@ import { createConfigForm } from '../components/configForm';
 // Tipos para los datos procesados
 interface ProcessedData {
   config: GlobalConfig,
-  teams: Equipo[]
+  teams?: Equipo[]
 }
 
 export function generateInputView(): Promise<ProcessedData> {
@@ -134,8 +134,8 @@ export function generateInputView(): Promise<ProcessedData> {
     // Form: open form, resolve with {config, []}
     formButton.onclick = async () => {
       container.remove();
-      const config = await createConfigForm();
-      resolve({ config, teams: [] });
+      const {config, teams} = await createConfigForm();
+      resolve({ config, teams });
     };
   });
 }

@@ -39,12 +39,6 @@ export const dummyConfig: GlobalConfig = {
     "Duración Presentación Verbal Development": 15,
     "Duración Presentación Verbal Professional": 15,
     "Duración Ceremonia de Clausura y Premios": 60,
-    "Tiempo Eliminatorias": 40,
-    "rounds": {
-        "Entry": 2,
-        "Development": 4,
-        "Professional": 4
-    },
     "Nº de carreras a la vez": 1,
     "Duración Carrera Development": 10,
     "Duración Carrera Entry": 10,
@@ -53,6 +47,7 @@ export const dummyConfig: GlobalConfig = {
     "Duración Escrutinio Fase 1": 10,
     "Duración Escrutinio Fase 2": 10,
     "Duración Escrutinio Fase 3": 10,
+    "Duración Cómputo de Puntos": 90,
 }
 
 const showResult = (minsTaken: number) => {

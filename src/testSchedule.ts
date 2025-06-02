@@ -49,15 +49,10 @@ export const config: GlobalConfig = {
   "Duración Carrera Development": 10,
   "Duración Carrera Entry": 10,
   "Duración Carrera Professional": 10,
-  "Tiempo Eliminatorias": 40,
-  "rounds": {
-    "Entry": 2,
-    "Development": 4,
-    "Professional": 4
-  },
   "Nº de carreras a la vez": 2,
   "Modalidad de Escrutinio": "Estructurado",
-  "Dia de Escrutinio": "2025-06-17"
+  "Dia de Escrutinio": "2025-06-17",
+  "Duración Cómputo de Puntos": 90
 }
 
 async function test() {

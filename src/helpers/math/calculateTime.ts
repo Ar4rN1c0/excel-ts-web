@@ -145,3 +145,16 @@ export const calculateTime = (teams: Equipo[], config: GlobalConfig): number => 
     console.log(durationMinutes);
     return durationMinutes;
 };
+
+
+export function getLastEventEndBeforeCeremony(teams: Equipo[]): Date {
+    let lastEnd: Date | null = null;
+    for (const team of teams) {
+        for (const event of (team as any).horario || []) {
+            if (event.nombre === "Ceremonia de Clausura y Premios") continue;
+            if (!lastEnd || event.end > lastEnd) lastEnd = event.end;
+        }
+    }
+    if (!lastEnd) throw new Error("No events found before ceremony");
+    return lastEnd;
+}

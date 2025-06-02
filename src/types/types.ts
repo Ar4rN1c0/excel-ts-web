@@ -94,15 +94,11 @@ export interface StaticConfig {
   "Duración Carrera Entry": number;
   "Duración Carrera Development": number;
   "Duración Carrera Professional": number;
-  "Tiempo Eliminatorias": number;
+  "Duración Cómputo de Puntos": number,
   "Nº de carreras a la vez": number;
   "Dia de Escrutinio"?: string,
-  "Modalidad de Escrutinio": "Estructurado" | "Desestructurado"
-  rounds: {
-    Entry: number;
-    Development: number;
-    Professional: number;
-  };
+  "Modalidad de Escrutinio": "Estructurado" | "Desestructurado",
+
 }
 
 // Tipo final combinando estructura fija y campos dinámicos
