@@ -12,7 +12,7 @@ export async function generarExcelEquipo(equipo: Equipo) {
 
   // Datos ordenados por hora de inicio
   equipo.horario
-    .filter(ev => ev.nombre !== "Descanso")
+    .filter(ev => ev.nombre !== "Descanso" && ev.nombre !== "Cómputo de Puntos")
     .sort((a: Evento, b: Evento) => a.start.getTime() - b.start.getTime())
     .forEach((ev: Evento) => {
       ws.addRow([

@@ -79,7 +79,7 @@ const showResult = (minsTaken: number) => {
 const calculate = async () => {
     const { config, teams: inputTeams } = await generateInputView();
     let teams = inputTeams;
-    if (inputTeams.length === 0) {
+    if (!inputTeams || !teams || inputTeams.length === 0) {
         const entryTeams = generateTeams("Entry", config["Nº equipos de Entry"]);
         const developmentTeams = generateTeams("Development", config["Nº equipos de Development"]);
         const professionalTeams = generateTeams("Professional", config["Nº equipos de Professional"]);
