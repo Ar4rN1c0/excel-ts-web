@@ -5,7 +5,7 @@ import { Equipo, Evento } from "../../types/types";
 /**
  * Asigna escrutinio desestructurado: cada equipo pasa por N fases, pipelined.
  * Cada fase tiene concurrencia máxima de 1, pero la asignación busca huecos
- * para evitar colisiones con el propio horario.
+ * para evitar colisiones con el propio horario y espera si hay eventos previos.
  */
 export function assignEstructuradoPipelinedScrutiny(
     teams: Equipo[],
@@ -14,14 +14,8 @@ export function assignEstructuradoPipelinedScrutiny(
     phasesDurations: number[]
 ): Date[] {
     const nPhases = phasesDurations.length;
-
-    // Para cada fase, agenda global (eventos ya asignados en esa fase)
     const phaseGlobalEvents: Evento[][] = Array.from({ length: nPhases }, () => []);
-
-    // Para cada equipo, su última fecha asignada (para devolver)
     const endTimes: Date[] = [];
-
-    // Orden por cuando terminan inscripción (puedes cambiar por prioridad si lo deseas)
     const order = startTimes
         .map((d, i) => ({ idx: i, time: d }))
         .sort((a, b) => a.time.getTime() - b.time.getTime())
@@ -34,35 +28,34 @@ export function assignEstructuradoPipelinedScrutiny(
 
         for (let phase = 0; phase < nPhases; phase++) {
             const duration = phasesDurations[phase];
-            // El intervalo posible es [prevPhaseEnd, end]
-            // Buscar huecos usando eventos propios y la agenda global de la fase
             const personalSchedule = (team as any).horario;
             const globalSchedule = phaseGlobalEvents[phase];
 
-            // Solo checar huecos que empiezan después de prevPhaseEnd
-            const windows = getAvailableWindows(
+            // 1. Get all windows where the TEAM is available (excluding global phase events)
+            const teamWindows = getAvailableWindows(
                 prevPhaseEnd,
                 end,
-                personalSchedule.concat(globalSchedule),
+                personalSchedule,
                 duration
             );
 
-            // Solo toma el primer hueco libre, si lo hay
             let assigned = false;
-            for (const [candidateStart, candidateEnd] of windows) {
-                const event: Evento = {
+            // 2. For each available team window, check if it collides with global phase events
+            for (const [windowStart, windowEnd] of teamWindows) {
+                // Create the candidate event for this phase
+                const candidateEvent: Evento = {
                     nombre: `Escrutinio Fase ${phase + 1}`,
                     tipo: "Concurrent Activity",
-                    start: candidateStart,
-                    end: candidateEnd,
+                    start: windowStart,
+                    end: windowEnd,
                     duracion: duration
                 };
-                // Verificamos solo colisión en la fase (concurrencia 1)
-                if (!hasCollision(globalSchedule, event, 1)) {
-                    // Asignar a horario y a la agenda global de la fase
-                    (team as any).horario.push(event);
-                    phaseGlobalEvents[phase].push(event);
-                    prevPhaseEnd = candidateEnd;
+                // Only assign if the phase is also available globally (no other team there)
+                if (!hasCollision(globalSchedule, candidateEvent, 1)) {
+                    // Assign to team's schedule and global phase schedule
+                    (team as any).horario.push(candidateEvent);
+                    globalSchedule.push(candidateEvent);
+                    prevPhaseEnd = windowEnd;
                     assigned = true;
                     break;
                 }

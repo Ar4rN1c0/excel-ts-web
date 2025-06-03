@@ -36,7 +36,6 @@ async function singleDay() {
 
     const eventos: Evento[] = teams.flatMap(team => team.horario);
     assignJudgeSchedule(judges, eventos)
-    console.log({...judges})
 
     document.body.innerHTML = '';
 

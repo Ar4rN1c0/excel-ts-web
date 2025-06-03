@@ -72,14 +72,12 @@ async function test() {
     const judgesScrutiny = generateJudges("Escrutinio", config["Nº de Jueces para el escrutinio"]);
 
     const judges = [...judgesPortfolioTecnico, ...judgesPortfolioEmpresa, ...judgesVerbal, ...judgesScrutiny];
-    console.log([...judges])
     const windows = getGlobalWindows(config)
 
     multipleDaySchedule(teams, windows, judgesVerbal, judgesScrutiny, judgesPortfolioEmpresa, judgesPortfolioTecnico, config["Nº de personal para el registro"], config);
 
     const eventos: Evento[] = teams.flatMap(team => team.horario);
     assignJudgeSchedule(judges, eventos)
-    console.log({...judges})
 
     document.body.innerHTML = '';
 

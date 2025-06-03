@@ -142,7 +142,6 @@ export const calculateTime = (teams: Equipo[], config: GlobalConfig): number => 
 
     // Calculate duration in minutes (total elapsed time from test start to last event)
     const durationMinutes = Math.round((finalEnd.getTime() - startDate.getTime()) / (1000 * 60));
-    console.log(durationMinutes);
     return durationMinutes;
 };
 

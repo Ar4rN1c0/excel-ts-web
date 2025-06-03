@@ -3,6 +3,7 @@ import { generarExcelEquipo, generarExcelJuez, generarExcelMaster } from "../../
 import { createDownloadButton } from "./createDownloadButton";
 import { generateZip } from "../../helpers/fileType/zip/zipUtil";
 import { downloadStateAsJSON } from "../../helpers/fileType/json/downloadStateAsJSON";
+import { generateScheduleTable } from "../main/viewMasterTable";
 
 export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElement {
     const section = document.createElement("section");
@@ -19,6 +20,26 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElem
     );
     section.appendChild(masterBtn);
 
+
+    const downloadToHTML = createDownloadButton(
+        "Descargar Horario en HTML",
+        () => {
+            const horario: string = generateScheduleTable(teams)
+            const blob = new Blob([horario], {
+                type: "text/html"
+            })
+
+            const url = URL.createObjectURL(blob)
+            const link = document.createElement("a")
+            link.href = url
+            link.download = "Horario Maestro.html"
+            document.body.appendChild(link)
+            link.click()
+            document.body.removeChild(link)
+            URL.revokeObjectURL(url)
+        }
+    )
+    section.appendChild(downloadToHTML)
     // Team buttons
     teams.forEach(equipo => {
         const teamBtn = createDownloadButton(

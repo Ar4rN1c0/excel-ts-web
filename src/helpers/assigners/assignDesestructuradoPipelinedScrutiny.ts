@@ -1,14 +1,10 @@
 import { Equipo, Evento } from "../../types/types";
 import { hasCollision } from "../math/check";
+import { getAvailableWindows } from "../math/windows";
 
 /**
- * Assigns escrutinio to teams as soon as they finish register and a judge is free.
- * @param teams 
- * @param startTimes Array of each team's registration end time
- * @param end Deadline for finishing
- * @param judgeCount Number of simultaneous escrutinio possible
- * @param durationsByCategory Duration per category
- * @returns Array of escrutinio end times per team
+ * Assigns escrutinio to teams as soon as they finish register and a judge is free,
+ * waiting if needed for team events to finish.
  */
 export function assignDesestructuradoPipelinedScrutiny(
     teams: Equipo[],
@@ -17,7 +13,11 @@ export function assignDesestructuradoPipelinedScrutiny(
     judgeCount: number,
     durationsByCategory: { [key: string]: number }
 ): Date[] {
-    const judgeNextFree: Date[] = new Array(judgeCount).fill(new Date(Math.min(...startTimes.map(d => d.getTime()))));
+    // For each judge, store when they are next available
+    const judgeNextFree: Date[] = new Array(judgeCount)
+        .fill(new Date(Math.min(...startTimes.map(d => d.getTime()))));
+    
+    // Order teams by their registration end time
     const order = startTimes
         .map((d, i) => ({ idx: i, time: d }))
         .sort((a, b) => a.time.getTime() - b.time.getTime())
@@ -28,46 +28,83 @@ export function assignDesestructuradoPipelinedScrutiny(
         const team = teams[teamIdx];
         const readyAt = startTimes[teamIdx];
         const duration = durationsByCategory[team.categoria];
+        const horarioActual: Evento[] = (team as any).horario || [];
 
-        // Find the judge that will be free the earliest
-        let soonestJudgeIdx = 0;
-        let soonestJudgeFree = judgeNextFree[0];
-        for (let j = 1; j < judgeCount; j++) {
-            if (judgeNextFree[j].getTime() < soonestJudgeFree.getTime()) {
-                soonestJudgeIdx = j;
-                soonestJudgeFree = judgeNextFree[j];
+        // Find all windows when the team is available (after readyAt, before end)
+        const windows = getAvailableWindows(readyAt, end, horarioActual, duration);
+
+        let assigned = false;
+
+        for (const [windowStart, windowEnd] of windows) {
+            // For this window, check when a judge is free
+            // The judge must be free *before* or at windowStart
+            let soonestJudgeIdx = -1;
+            let soonestJudgeFree: Date | null = null;
+            for (let j = 0; j < judgeCount; j++) {
+                // Judge can be free before or at the start of the window
+                if (judgeNextFree[j].getTime() <= windowStart.getTime()) {
+                    if (
+                        soonestJudgeFree === null ||
+                        judgeNextFree[j].getTime() < soonestJudgeFree.getTime()
+                    ) {
+                        soonestJudgeIdx = j;
+                        soonestJudgeFree = judgeNextFree[j];
+                    }
+                }
+            }
+
+            // If no judge is free at the start, find the soonest judge who will be free inside the window
+            if (soonestJudgeIdx === -1) {
+                for (let j = 0; j < judgeCount; j++) {
+                    if (
+                        judgeNextFree[j].getTime() < windowEnd.getTime() // judge will be free *before* the window ends
+                        && (
+                            soonestJudgeFree === null ||
+                            judgeNextFree[j].getTime() < soonestJudgeFree.getTime()
+                        )
+                    ) {
+                        soonestJudgeIdx = j;
+                        soonestJudgeFree = judgeNextFree[j];
+                    }
+                }
+            }
+
+            // If we found a possible judge/time:
+            if (soonestJudgeIdx !== -1 && soonestJudgeFree) {
+                // Team can start at the max of windowStart and judge's availability
+                const start = new Date(Math.max(windowStart.getTime(), soonestJudgeFree.getTime()));
+                const finish = new Date(start.getTime() + duration * 60000);
+                if (finish > windowEnd) continue; // Not enough room in this window
+
+                // Prepare the new event
+                const evento: Evento = {
+                    nombre: "Escrutinio",
+                    tipo: "Concurrent Activity",
+                    start,
+                    end: finish,
+                    duracion: duration
+                };
+
+                // Check for collision (paranoid, but just in case)
+                if (hasCollision(horarioActual, evento, 1)) continue;
+
+                // Assign horario
+                (team as any).horario = horarioActual.concat(evento);
+
+                // Update judge's next free
+                judgeNextFree[soonestJudgeIdx] = finish;
+
+                escrutinioEndTimes[teamIdx] = finish;
+                assigned = true;
+                break;
             }
         }
-        // Team can start when both it's ready and a judge is free
-        const start = new Date(Math.max(readyAt.getTime(), soonestJudgeFree.getTime()));
-        const finish = new Date(start.getTime() + duration * 60000);
 
-        if (finish > end) {
-            throw new Error("No hay tiempo suficiente para todos los escrutinios");
+        if (!assigned) {
+            throw new Error(
+                `No hay tiempo suficiente para el escrutinio de ${team.nombre} antes del deadline`
+            );
         }
-
-        // --- COLLISION CHECK ---
-        // Create the "Evento" object to check
-        const evento: Evento = {
-            nombre: "Escrutinio",
-            tipo: "Concurrent Activity",
-            start,
-            end: finish,
-            duracion: duration
-        };
-
-        // Check against team.horario
-        const horarioActual: Evento[] = (team as any).horario || [];
-        if (hasCollision(horarioActual, evento, 1)) {
-            throw new Error(`El equipo ${team.nombre} tiene un conflicto de horario con el escrutinio`);
-        }
-
-        // Assign horario
-        (team as any).horario = horarioActual.concat(evento);
-
-        // Update when this judge is next available
-        judgeNextFree[soonestJudgeIdx] = finish;
-        escrutinioEndTimes[teamIdx] = finish;
     }
     return escrutinioEndTimes;
 }
