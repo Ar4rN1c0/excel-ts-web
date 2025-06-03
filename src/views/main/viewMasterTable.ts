@@ -13,33 +13,33 @@ export function formatDateTime(date: Date): string {
 
 
 interface GroupedEvento {
-    start: Date
-    end: Date
-    nombre: string
-    participantes: Equipo[]
+  start: Date
+  end: Date
+  nombre: string
+  participantes: Equipo[]
 }
 
 export function generateScheduleTable(equipos: Equipo[]): string {
   const groupedEventos: GroupedEvento[] = Object.values(
-      equipos.reduce((acc, equipo) => {
-          equipo.horario.forEach((evento: Evento) => {
-              const key = `${evento.start.toISOString()}-${evento.end.toISOString()}-${evento.nombre}`
-              if (!acc[key]) {
-                  acc[key] = {
-                      start: evento.start,
-                      end: evento.end,
-                      nombre: evento.nombre,
-                      participantes: [],
-                  }
-              }
-              acc[key].participantes.push(equipo)
-          })
-          return acc
-      }, {} as Record<string, GroupedEvento>)
+    equipos.reduce((acc, equipo) => {
+      equipo.horario.forEach((evento: Evento) => {
+        const key = `${evento.start.toISOString()}-${evento.end.toISOString()}-${evento.nombre}`
+        if (!acc[key]) {
+          acc[key] = {
+            start: evento.start,
+            end: evento.end,
+            nombre: evento.nombre,
+            participantes: [],
+          }
+        }
+        acc[key].participantes.push(equipo)
+      })
+      return acc
+    }, {} as Record<string, GroupedEvento>)
   )
 
   if (groupedEventos.length === 0) {
-      return "<div>No hay eventos programados.</div>"
+    return "<div>No hay eventos programados.</div>"
   }
 
   groupedEventos.sort((a, b) => a.start.getTime() - b.start.getTime())
@@ -58,34 +58,34 @@ export function generateScheduleTable(equipos: Equipo[]): string {
 `
 
   groupedEventos.forEach((evento) => {
-      if (evento.nombre === "Descanso") {
-          const dia = new Date(evento.start)
-          dia.setDate(dia.getDate() - 1) // Día que termina
-          const formattedDay = formatDateTime(dia).split(" ")[0] + " " + formatDateTime(dia).split(" ")[1]
-          html += `
-            <tr>
-              <td colspan="4" style="text-align: center; font-weight: bold;">
-                Fin del día: ${formattedDay}
-              </td>
-            </tr>
-          `
-      } else {
-          const startTime = formatDateTime(evento.start)
-          const endTime = formatDateTime(evento.end)
+    if (evento.nombre === "Descanso") {
+      const dia = new Date(evento.start)
+      dia.setDate(dia.getDate() ) // Día que termina
+      const formattedDay = formatDateTime(dia).split(" ")[0] + " " + formatDateTime(dia).split(" ")[1]
+      html += `
+      <tr>
+        <td colspan="4" style="text-align: center; font-weight: bold;">
+          Fin del día: ${formattedDay}
+        </td>
+      </tr>
+    `
+    } else {
+      const startTime = formatDateTime(evento.start)
+      const endTime = formatDateTime(evento.end)
 
-          html += `
+      html += `
             <tr>
               <td>${evento.nombre}</td>
               <td>${startTime}</td>
               <td>${endTime}</td>
               <td>
                 ${evento.participantes
-                    .map((equipo) => `${equipo.nombre}`)
-                    .join("<br />")}
+          .map((equipo) => `${equipo.nombre}`)
+          .join("<br />")}
               </td>
             </tr>
           `
-      }
+    }
   })
 
   html += `

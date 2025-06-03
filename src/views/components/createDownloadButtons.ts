@@ -40,6 +40,7 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElem
         }
     )
     section.appendChild(downloadToHTML)
+    
     // Team buttons
     teams.forEach(equipo => {
         const teamBtn = createDownloadButton(
