@@ -40,7 +40,7 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElem
         }
     )
     section.appendChild(downloadToHTML)
-    
+
     // Team buttons
     teams.forEach(equipo => {
         const teamBtn = createDownloadButton(
@@ -55,11 +55,12 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElem
     });
 
     // Judge buttons
+    const judgeTimetableteams = [...teams]
     judges.forEach(juez => {
         const judgeBtn = createDownloadButton(
             `Descargar Horario Juez ${juez.nombre} en Excel`,
             () => {
-                generarExcelJuez(juez, [...teams])
+                generarExcelJuez(juez, judgeTimetableteams)
                     .then(() => console.log(`Excel para el juez ${juez.id} descargado correctamente.`))
                     .catch((error) => console.error(`Error al generar el Excel para el juez ${juez.id}:`, error));
             }
