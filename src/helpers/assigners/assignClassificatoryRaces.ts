@@ -10,44 +10,17 @@ interface UnsortedRace {
   categoria: Categoria;
 }
 
-// Simple min-heap for Dates (stores numbers for easy comparison)
-class MinHeap {
-  private data: number[] = [];
-  size() { return this.data.length; }
-  peek() { return this.data[0]; }
-  push(val: number) {
-    this.data.push(val);
-    this.bubbleUp();
-  }
-  pop() {
-    const min = this.data[0];
-    const end = this.data.pop()!;
-    if (this.data.length) {
-      this.data[0] = end;
-      this.bubbleDown();
-    }
-    return min;
-  }
-  private bubbleUp() {
-    let i = this.data.length - 1;
-    while (i > 0) {
-      let parent = Math.floor((i - 1) / 2);
-      if (this.data[i] >= this.data[parent]) break;
-      [this.data[i], this.data[parent]] = [this.data[parent], this.data[i]];
-      i = parent;
+// DUMMY_TEAM must match the one in the generator
+const DUMMY_TEAM_NAME = "__BYE__";
+
+function countOverlaps(start: Date, end: Date, scheduled: Evento[]): number {
+  let count = 0;
+  for (const ev of scheduled) {
+    if (!(end <= ev.start || start >= ev.end)) {
+      count++;
     }
   }
-  private bubbleDown() {
-    let i = 0, len = this.data.length;
-    while (true) {
-      let left = 2 * i + 1, right = 2 * i + 2, smallest = i;
-      if (left < len && this.data[left] < this.data[smallest]) smallest = left;
-      if (right < len && this.data[right] < this.data[smallest]) smallest = right;
-      if (smallest === i) break;
-      [this.data[i], this.data[smallest]] = [this.data[smallest], this.data[i]];
-      i = smallest;
-    }
-  }
+  return count;
 }
 
 export const assignClassificatoryRaces = (
@@ -87,62 +60,97 @@ export const assignClassificatoryRaces = (
 
   const allRaces: Evento[] = [];
   let raceNumber = 1;
-  const heap = new MinHeap();
 
   for (const { team1, team2, earliestStart, categoria } of unsortedRaces) {
+    if (team1.nombre === DUMMY_TEAM_NAME && team2.nombre === DUMMY_TEAM_NAME) continue;
+
     const raceDuration = duration[categoria];
+    let scheduled = false;
+    let currentEarliest = Math.max(start.getTime(), earliestStart.getTime());
 
-    // The earliest this race can start
-    let earliest = Math.max(start.getTime(), earliestStart.getTime());
+    while (!scheduled && currentEarliest + raceDuration * 60000 <= end.getTime()) {
+      let windows1, windows2;
+      if (team1.nombre === DUMMY_TEAM_NAME) {
+        windows1 = getAvailableWindows(new Date(currentEarliest), end, team2.horario, raceDuration);
+        windows2 = windows1;
+      } else if (team2.nombre === DUMMY_TEAM_NAME) {
+        windows1 = getAvailableWindows(new Date(currentEarliest), end, team1.horario, raceDuration);
+        windows2 = windows1;
+      } else {
+        windows1 = getAvailableWindows(new Date(currentEarliest), end, team1.horario, raceDuration);
+        windows2 = getAvailableWindows(new Date(currentEarliest), end, team2.horario, raceDuration);
+      }
+      const sharedWindow = findFirstSharedWindow(windows1, windows2, raceDuration);
 
-    // Free up race slots that have finished by now
-    while (heap.size() && heap.peek() <= earliest) {
-      heap.pop();
+      if (!sharedWindow) {
+        throw new Error(
+          `No se pudo asignar carrera para ${team1.nombre} vs ${team2.nombre}`
+        );
+      }
+
+      const [startTime, endTime] = sharedWindow;
+
+      // **Check overlaps**
+      const overlapCount = countOverlaps(startTime, endTime, allRaces);
+
+      if (overlapCount < maxRaces) {
+        let nombreCarrera;
+        if (team1.nombre === DUMMY_TEAM_NAME) {
+          nombreCarrera = `Carrera Clasificatoria ${raceNumber++} - [Solo] ${team2.nombre}`;
+        } else if (team2.nombre === DUMMY_TEAM_NAME) {
+          nombreCarrera = `Carrera Clasificatoria ${raceNumber++} - [Solo] ${team1.nombre}`;
+        } else {
+          nombreCarrera = `Carrera Clasificatoria ${raceNumber++} - ${team1.nombre} vs ${team2.nombre}`;
+        }
+
+        const newEvent: Evento = {
+          tipo: "Race",
+          start: startTime,
+          end: endTime,
+          duracion: raceDuration,
+          nombre: nombreCarrera,
+        };
+
+        // **Collision checks remain exactly as before**
+        const collision1 = team1.nombre !== DUMMY_TEAM_NAME && hasCollision(team1.horario, newEvent, 1);
+        const collision2 = team2.nombre !== DUMMY_TEAM_NAME && hasCollision(team2.horario, newEvent, 1);
+
+        if (!collision1 && !collision2) {
+          // Only assign to real teams
+          if (team1.nombre !== DUMMY_TEAM_NAME) team1.horario.push(newEvent);
+          if (team2.nombre !== DUMMY_TEAM_NAME) team2.horario.push(newEvent);
+          allRaces.push(newEvent);
+          scheduled = true;
+        } else {
+          throw new Error(
+            `Colisión al asignar carrera entre ${team1.nombre} y ${team2.nombre}`
+          );
+        }
+      } else {
+        // Move currentEarliest to the next minute after the soonest conflicting race ends
+        let nextAvailable = end.getTime();
+        for (const ev of allRaces) {
+          if (!(endTime <= ev.start || startTime >= ev.end)) {
+            if (ev.end.getTime() > currentEarliest && ev.end.getTime() < nextAvailable) {
+              nextAvailable = ev.end.getTime();
+            }
+          }
+        }
+        // Avoid infinite loop: if nextAvailable doesn't advance, increment by 1 minute
+        if (nextAvailable <= currentEarliest) {
+          currentEarliest += 60000; // add 1 minute
+        } else {
+          currentEarliest = nextAvailable;
+        }
+      }
     }
 
-    // If all race slots are busy, advance to the soonest available slot
-    if (heap.size() >= maxRaces) {
-      earliest = heap.peek();
-      // Remove only one race ending at this time
-      heap.pop();
-      // Note: We do NOT remove all races at this time, only one slot per new assignment
-    }
-
-    // Find available windows for both teams
-    const windows1 = getAvailableWindows(new Date(earliest), end, team1.horario, raceDuration);
-    const windows2 = getAvailableWindows(new Date(earliest), end, team2.horario, raceDuration);
-    const sharedWindow = findFirstSharedWindow(windows1, windows2, raceDuration);
-
-    if (!sharedWindow) {
+    if (!scheduled) {
       throw new Error(
-        `No se pudo asignar carrera para ${team1.nombre} vs ${team2.nombre}`
-      );
-    }
-
-    const [startTime, endTime] = sharedWindow;
-    const newEvent: Evento = {
-      tipo: "Race",
-      start: startTime,
-      end: endTime,
-      duracion: raceDuration,
-      nombre: `Carrera Clasificatoria ${raceNumber++} - ${team1.nombre} vs ${team2.nombre}`,
-    };
-
-    const collision1 = hasCollision(team1.horario, newEvent, 1);
-    const collision2 = hasCollision(team2.horario, newEvent, 1);
-
-    if (!collision1 && !collision2) {
-      team1.horario.push(newEvent);
-      team2.horario.push(newEvent);
-      allRaces.push(newEvent);
-      // Push new race's end time to the heap (as timestamp for efficiency)
-      heap.push(endTime.getTime());
-    } else {
-      throw new Error(
-        `Colisión al asignar carrera entre ${team1.nombre} y ${team2.nombre}`
+        `No se pudo asignar carrera para ${team1.nombre} vs ${team2.nombre} (sin espacio en maxRaces)`
       );
     }
   }
-
+  console.log(allRaces)
   return allRaces;
 };

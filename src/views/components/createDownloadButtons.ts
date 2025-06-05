@@ -59,7 +59,7 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElem
         const judgeBtn = createDownloadButton(
             `Descargar Horario Juez ${juez.nombre} en Excel`,
             () => {
-                generarExcelJuez(juez)
+                generarExcelJuez(juez, [...teams])
                     .then(() => console.log(`Excel para el juez ${juez.id} descargado correctamente.`))
                     .catch((error) => console.error(`Error al generar el Excel para el juez ${juez.id}:`, error));
             }

@@ -9,7 +9,7 @@ export const assignSmallEvent = (
   maxJudges: number,
   durationMap: DurationMap,
   eventName: string,
-  priorities?: Priorities
+  priorities?: Priorities,
 ): Date => {
   const globalEvents: Evento[] = [];
 
@@ -45,6 +45,8 @@ export const assignSmallEvent = (
       : windowsCache.get(a.nombre)!.length - windowsCache.get(b.nombre)!.length;
   });
 
+  const assignedEvents: Evento[] = [];
+
   for (const team of sortedTeams) {
     const duration = durationMap[team.categoria];
     const posiblesVentanas = windowsCache.get(team.nombre)!;
@@ -60,7 +62,6 @@ export const assignSmallEvent = (
         tipo: "Concurrent Activity"
       };
 
-      // Solo se consideran eventos del propio equipo + globales para verificar colisión
       const personalSchedule = team.horario.filter(
         e => e.end > startDate && e.start < endDate
       );
@@ -70,6 +71,7 @@ export const assignSmallEvent = (
       ) {
         team.horario.push(event);
         globalEvents.push(event);
+        assignedEvents.push(event);
         assigned = true;
         break;
       }
@@ -80,6 +82,7 @@ export const assignSmallEvent = (
     }
   }
 
-  // Devolver la fecha final más tardía entre los eventos asignados
-  return new Date(Math.max(...globalEvents.map(e => e.end.getTime())));
+  // Only relax if the eventName is not "Registro"
+
+  return new Date(Math.max(...assignedEvents.map(e => e.end.getTime())));
 };

@@ -110,25 +110,45 @@ export async function generarExcelMasterJueces(jueces: Juez[]) {
   await downloadWorkbook(wb, 'Horario_Jueces_Maestro.xlsx');
 }
 
-export async function generarExcelJuez(juez: Juez) {
+export async function generarExcelJuez(juez: Juez, equipos: Equipo[]) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Horario');
 
-  ws.addRow(['Actividad', 'Duración (min)', 'Inicio', 'Fin']);
+  ws.addRow(['Actividad', 'Duración (min)', 'Inicio', 'Fin', 'Participante']);
   ws.getRow(1).font = { bold: true };
 
   juez.horario
     .sort((a: Evento, b: Evento) => a.start.getTime() - b.start.getTime())
     .forEach((ev: Evento) => {
+      // Find the team with this exact event (should be only one per judge slot)
+      const equipo = equipos.find(equipo =>
+        equipo.horario.some(evh =>
+          evh.nombre === ev.nombre &&
+          evh.start.getTime() === ev.start.getTime() &&
+          evh.end.getTime() === ev.end.getTime()
+        )
+      );
+
+      // Remove that event from that team's horario, so next match picks another team
+      if (equipo) {
+        const idx = equipo.horario.findIndex(evh =>
+          evh.nombre === ev.nombre &&
+          evh.start.getTime() === ev.start.getTime() &&
+          evh.end.getTime() === ev.end.getTime()
+        );
+        if (idx !== -1) equipo.horario.splice(idx, 1);
+      }
+
       ws.addRow([
         formatActivityName(ev.nombre, ''),
         getDurationInMinutes(ev),
         formatDateTime(ev.start),
-        formatDateTime(ev.end)
+        formatDateTime(ev.end),
+        equipo ? equipo.nombre : ''
       ]);
     });
 
-  // Autoajustar columnas con tipado seguro
+  // Autoajustar columnas
   ws.columns.forEach(column => {
     if (column.values) {
       const maxLength = column.values.reduce((max: number, value: ExcelJS.CellValue) => {
