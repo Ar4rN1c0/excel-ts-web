@@ -82,7 +82,5 @@ export const assignSmallEvent = (
     }
   }
 
-  // Only relax if the eventName is not "Registro"
-
   return new Date(Math.max(...assignedEvents.map(e => e.end.getTime())));
 };

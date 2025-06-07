@@ -1,6 +1,6 @@
 // output.ts
 import ExcelJS from 'exceljs';
-import { Equipo, Juez, Evento } from '../../../types/types'; 
+import { Equipo, Juez, Evento, Assignation } from '../../../types/types';
 export async function generarExcelEquipo(equipo: Equipo) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet('Horario');
@@ -110,58 +110,39 @@ export async function generarExcelMasterJueces(jueces: Juez[]) {
   await downloadWorkbook(wb, 'Horario_Jueces_Maestro.xlsx');
 }
 
-export async function generarExcelJuez(juez: Juez, equipos: Equipo[]) {
+// ---- FIXED FUNCTION ----
+export async function generarExcelJuez(
+  juez: Juez,
+  assignations: Assignation[]
+) {
   const wb = new ExcelJS.Workbook();
-  const ws = wb.addWorksheet('Horario');
+  const ws = wb.addWorksheet("Horario");
 
-  ws.addRow(['Actividad', 'Duración (min)', 'Inicio', 'Fin', 'Participante']);
+  // 1) Header row
+  ws.addRow(["Actividad", "Duración (min)", "Inicio", "Fin", "Participante"]);
   ws.getRow(1).font = { bold: true };
+  console.log(assignations.filter(a => a.judge.id === juez.id)
+                          .sort((a, b) => new Date(a.event.start).getTime() - new Date(b.event.start).getTime())
+                          .map(a => `Judge ${a.judge.nombre} is assigned ${a.event.nombre} for team ${a.team} from ${formatDateTime(a.event.start)} to ${formatDateTime(a.event.end)}`)
+                        )
+  // 2) Filter assignments for this judge, sort by event.start
+  const rows = assignations
+    .filter(a => a.judge.id === juez.id)
+    .sort((a, b) => new Date(a.event.start).getTime() - new Date(b.event.start).getTime())
+    .map(a => [
+      a.event.nombre,
+      a.event.duracion,
+      formatDateTime(a.event.start),
+      formatDateTime(a.event.end),
+      a.team
+    ]);
 
-  juez.horario
-    .sort((a: Evento, b: Evento) => a.start.getTime() - b.start.getTime())
-    .forEach((ev: Evento) => {
-      // Find the team with this exact event (should be only one per judge slot)
-      const equipo = equipos.find(equipo =>
-        equipo.horario.some(evh =>
-          evh.nombre === ev.nombre &&
-          evh.start.getTime() === ev.start.getTime() &&
-          evh.end.getTime() === ev.end.getTime()
-        )
-      );
+  // 3) Add rows to worksheet
+  rows.forEach(row => ws.addRow(row));
 
-      // Remove that event from that team's horario, so next match picks another team
-      if (equipo) {
-        const idx = equipo.horario.findIndex(evh =>
-          evh.nombre === ev.nombre &&
-          evh.start.getTime() === ev.start.getTime() &&
-          evh.end.getTime() === ev.end.getTime()
-        );
-        if (idx !== -1) equipo.horario.splice(idx, 1);
-      }
-
-      ws.addRow([
-        formatActivityName(ev.nombre, ''),
-        getDurationInMinutes(ev),
-        formatDateTime(ev.start),
-        formatDateTime(ev.end),
-        equipo ? equipo.nombre : ''
-      ]);
-    });
-
-  // Autoajustar columnas
-  ws.columns.forEach(column => {
-    if (column.values) {
-      const maxLength = column.values.reduce((max: number, value: ExcelJS.CellValue) => {
-        const length = value?.toString().length || 0;
-        return Math.max(max, length);
-      }, 0);
-      column.width = Math.max(15, maxLength);
-    }
-  });
-
+  // 5) Trigger browser download
   await downloadWorkbook(wb, `Juez_${juez.tipo}_${juez.id}_Horario.xlsx`);
 }
-
 // Funciones auxiliares con tipado explícito
 async function downloadWorkbook(wb: ExcelJS.Workbook, filename: string): Promise<void> {
   const buf = await wb.xlsx.writeBuffer();

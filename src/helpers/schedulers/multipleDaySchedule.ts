@@ -32,7 +32,6 @@ export const multipleDaySchedule = (
     personelRegister: number,
     config: GlobalConfig
 ) => {
-    console.log(config["Duración Cómputo de Puntos"])
     const numOfDays = config.NumberOfDays;
     const ceremonyDuration = config["Duración Ceremonia de Clausura y Premios"];
     const ceremonyStart = new Date(windows[numOfDays - 1][1].getTime() - mins(ceremonyDuration));
@@ -244,7 +243,6 @@ export const multipleDaySchedule = (
         // ========== Añadir "Cómputo de Puntos" justo antes de la ceremonia ==========
         const lastEnd = getLastEventEndBeforeCeremony(teams);
         const puntoDuration = config["Duración Cómputo de Puntos"];
-        console.log(puntoDuration)
         assignGlobalEvent(
             "Cómputo de Puntos",
             lastEnd,

@@ -5,13 +5,12 @@ export const generateJudges = (tipo: TipoJuez, cantidad: number) => {
 
   for (let i = 0; i < cantidad; i++) {
     const juez: Juez = {
-      id: i + 1,
+      id: `${tipo} ${i + 1} ${crypto.randomUUID()}`,
       tipo: tipo,
       horario: [],
       nombre: `${tipo} ${i + 1}`
     };
     judges.push(juez);
   }
-
   return judges;
 }

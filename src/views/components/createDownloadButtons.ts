@@ -1,11 +1,11 @@
-import { Equipo, Juez } from "../../types/types";
+import {  Assignation, Equipo, Juez } from "../../types/types";
 import { generarExcelEquipo, generarExcelJuez, generarExcelMaster } from "../../helpers/fileType/excel/output";
 import { createDownloadButton } from "./createDownloadButton";
 import { generateZip } from "../../helpers/fileType/zip/zipUtil";
 import { downloadStateAsJSON } from "../../helpers/fileType/json/downloadStateAsJSON";
 import { generateScheduleTable } from "../main/viewMasterTable";
 
-export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElement {
+export function createDownloadButtons(teams: Equipo[], judges: Juez[], assignations: Assignation[]): HTMLElement {
     const section = document.createElement("section");
     section.className = "button-section";
 
@@ -55,19 +55,18 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElem
     });
 
     // Judge buttons
-    const judgeTimetableteams = [...teams]
-    judges.forEach(juez => {
+
+    judges.forEach((juez) => {
         const judgeBtn = createDownloadButton(
             `Descargar Horario Juez ${juez.nombre} en Excel`,
             () => {
-                generarExcelJuez(juez, judgeTimetableteams)
+                generarExcelJuez(juez, assignations)
                     .then(() => console.log(`Excel para el juez ${juez.id} descargado correctamente.`))
                     .catch((error) => console.error(`Error al generar el Excel para el juez ${juez.id}:`, error));
             }
         );
         section.appendChild(judgeBtn);
     });
-
     // Save State as JSON button (special styling)
     const saveStateBtn = createDownloadButton(
         "Guardar Estado (JSON)",
@@ -80,7 +79,7 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[]): HTMLElem
     const zipBtn = createDownloadButton(
         "Descargar Todos en ZIP",
         async () => {
-            await generateZip(teams, judges)
+            await generateZip(teams, judges, assignations)
         }
     );
     zipBtn.classList.add("special-download-btn");

@@ -151,6 +151,5 @@ export const assignClassificatoryRaces = (
       );
     }
   }
-  console.log(allRaces)
   return allRaces;
 };

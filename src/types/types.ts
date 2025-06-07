@@ -1,6 +1,6 @@
 // types/types.ts
 export type Categoria = 'Entry' | 'Development' | 'Professional';
-export type TipoJuez = 'Portfolio Técnico' | 'Portfolio de Empresa' | 'Presentación Verbal' | "Escrutinio";
+export type TipoJuez = 'Portfolio Técnico' | 'Portfolio de Empresa' | 'Presentación Verbal' | "Escrutinio" | 'Registro';
 
 export type EventoTipo =
   | "Concurrent Activity"
@@ -23,7 +23,7 @@ export interface Equipo {
 }
 
 export interface Juez {
-  id: number;
+  id: string;
   tipo: TipoJuez;
   horario: Evento[];
   nombre: `${TipoJuez} ${number}`
@@ -112,4 +112,10 @@ export type Priorities = {
 export type State = {
   teams: Equipo[],
   judges: Juez[]
+}
+
+export type Assignation = {
+    judge: Juez;
+    event: Evento;
+    team: string;
 }

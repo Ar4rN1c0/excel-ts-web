@@ -4,7 +4,7 @@ import "./style.css";
 import { generateMainView } from "./views/main/generateMainView";
 //import { singleDaySchedule } from "./helpers/schedulers/singleDaySchedule";
 import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
-import { Evento, GlobalConfig } from "./types/types";
+import { GlobalConfig } from "./types/types";
 import { multipleDaySchedule } from "./helpers/schedulers/multipleDaySchedule";
 import { getGlobalWindows } from "./helpers/math/windows";
 
@@ -75,13 +75,13 @@ async function test() {
     const windows = getGlobalWindows(config)
 
     multipleDaySchedule(teams, windows, judgesVerbal, judgesScrutiny, judgesPortfolioEmpresa, judgesPortfolioTecnico, config["Nº de personal para el registro"], config);
+    const events = teams.flatMap(ev => ev.horario)
 
-    const eventos: Evento[] = teams.flatMap(team => team.horario);
-    assignJudgeSchedule(judges, eventos)
+    const assignations = assignJudgeSchedule(judges, events, teams)
 
     document.body.innerHTML = '';
 
-    generateMainView(teams, judges);
+    generateMainView(teams, judges, assignations);
   } catch (error) {
     console.error('Hubo un error al procesar el archivo:', error);
   }

@@ -1,9 +1,9 @@
 import JSZip from "jszip";
 import ExcelJS from "exceljs";
-import { Equipo, Juez } from "../../../types/types";
+import { Assignation, Equipo, Juez } from "../../../types/types";
 import { formatActivityName, formatDateTime, getDurationInMinutes } from "../excel/output";
 
-export async function generateZip(teams: Equipo[], judges: Juez[]) {
+export async function generateZip(teams: Equipo[], judges: Juez[], assignations: Assignation[]) {
     const zip = new JSZip();
 
     // --- Master Excel ---
@@ -79,20 +79,29 @@ export async function generateZip(teams: Equipo[], judges: Juez[]) {
     for (const juez of judges) {
         const wb = new ExcelJS.Workbook();
         const ws = wb.addWorksheet('Horario');
-        ws.addRow(['Actividad', 'Duración (min)', 'Inicio', 'Fin']);
+
+        ws.addRow(['Actividad', 'Duración (min)', 'Inicio', 'Fin', 'Participante']);
         ws.getRow(1).font = { bold: true };
+        console.log(assignations.filter(a => a.judge.id === juez.id)
+            .sort((a, b) => new Date(a.event.start).getTime() - new Date(b.event.start).getTime())
+            .map(a => `Judge ${a.judge.nombre} is assigned ${a.event.nombre} for team ${a.team} from ${formatDateTime(a.event.start)} to ${formatDateTime(a.event.end)}`)
+        )
 
-        juez.horario
-            .sort((a, b) => a.start.getTime() - b.start.getTime())
-            .forEach(ev => {
-                ws.addRow([
-                    formatActivityName(ev.nombre, ''),
-                    getDurationInMinutes(ev),
-                    formatDateTime(ev.start),
-                    formatDateTime(ev.end)
-                ]);
-            });
+        // Filter assignments for this judge, sort by event.start
+        const rows = assignations
+            .filter(a => a.judge.id === juez.id)
+            .sort((a, b) => new Date(a.event.start).getTime() - new Date(b.event.start).getTime())
+            .map(a => [
+                a.event.nombre,
+                a.event.duracion,
+                formatDateTime(a.event.start),
+                formatDateTime(a.event.end),
+                a.team
+            ]);
 
+        rows.forEach(row => ws.addRow(row));
+
+        // Auto-size columns (optional, keep if you want)
         ws.columns.forEach(column => {
             const values = column.values?.slice(1) ?? [];
             const maxLength = values.reduce<number>((max, value) => {
@@ -103,7 +112,7 @@ export async function generateZip(teams: Equipo[], judges: Juez[]) {
         });
 
         const buf = await wb.xlsx.writeBuffer();
-        zip.file(`Juez_${juez.tipo}_${juez.id}_Horario.xlsx`, buf);
+        zip.file(`Juez_${juez.tipo}_${juez.nombre}_Horario.xlsx`, buf);
     }
 
     // --- Generate ZIP and trigger download ---

@@ -4,6 +4,7 @@ import { getStateFromKey } from "../../helpers/storage/getStateFromKey";
 import { createDownloadButtons } from "../components/createDownloadButtons";
 import { generateScheduleTable } from "../main/viewMasterTable";
 import { selectScheduleSource } from "../components/getScheduleKey";
+import { assignJudgeSchedule } from "../../helpers/assigners/assignJudgeTimetable";
 
 
 const library = async () => {
@@ -16,8 +17,10 @@ const library = async () => {
     } else {
         ({ teams, judges } = choice.state);
     }
+    const events = teams.flatMap(ev => ev.horario)
 
-    const buttons = createDownloadButtons(teams, judges);
+    const assignations = assignJudgeSchedule(judges, events, teams)
+    const buttons = createDownloadButtons(teams, judges, assignations);
     const table = generateScheduleTable(teams);
 
     document.body.appendChild(buttons);

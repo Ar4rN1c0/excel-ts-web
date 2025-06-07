@@ -3,7 +3,7 @@ import { generateJudges } from "./helpers/generators/generateJudges";
 import "./style.css";
 import { generateMainView } from "./views/main/generateMainView";
 import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
-import { Evento, GlobalConfig } from "./types/types";
+import {  GlobalConfig } from "./types/types";
 import { multipleDaySchedule } from "./helpers/schedulers/multipleDaySchedule";
 import { getGlobalWindows } from "./helpers/math/windows";
 import { generateInputView } from "./views/main/generateInputView";
@@ -80,15 +80,15 @@ async function main() {
 
     const judges = [...judgesPortfolioTecnico, ...judgesPortfolioEmpresa, ...judgesVerbal, ...judgesScrutiny];
 
-  
+
     const windows = getGlobalWindows(config)
     multipleDaySchedule(teams, windows, judgesVerbal, judgesScrutiny, judgesPortfolioEmpresa, judgesPortfolioTecnico, config["Nº de personal para el registro"], config);
-    const eventos: Evento[] = teams.flatMap(team => team.horario);
-    assignJudgeSchedule(judges, eventos)
+    const events = teams.flatMap(ev => ev.horario)
+    const assignations = assignJudgeSchedule(judges, events, teams)
 
     document.body.innerHTML = '';
 
-    generateMainView(teams, judges);
+    generateMainView(teams, judges, assignations);
   } catch (error) {
     console.error('Hubo un error al procesar el archivo:', error);
     showErrorUI(error);
