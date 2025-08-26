@@ -28,7 +28,7 @@ A complete scheduling system for **multi-day F1 in Schools events**. It generate
 The repo has two main areas: the **frontend app** (`src/…`) and the **desktop wrapper** (`executable/…`). They are built independently.
 
 ### Frontend application (`src/`)
-
+```
 src
 ├── helpers
 │   ├── assigners/        # Event & judge assignment logic
@@ -48,9 +48,9 @@ src
 └── views/                # All UI components: forms, inputs, tables, pages
     ├── components/
     └── main/
-
+```
 ### Desktop tray app (`executable/`)
-
+```
 executable
 ├── F1Scheduler.exe       # Built binary (Windows example)
 ├── _embed/
@@ -69,7 +69,7 @@ executable
     └── syncdist.go       # go:generate helper to mirror ../dist → ./_embed/dist
 
 ---
-
+```
 ## Tech Stack
 
 - **Frontend:** TypeScript, HTML, CSS (bundled with Vite)
