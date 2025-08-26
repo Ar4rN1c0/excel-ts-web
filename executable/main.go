@@ -146,12 +146,10 @@ func onReady() {
 	systray.SetTooltip("F1Scheduler (local)")
 
 	// Menu items
-	mOpen := systray.AddMenuItem("Open App", "Open home page")
-	mLibrary := systray.AddMenuItem("Open Library", "Open /library")
-	mSingle := systray.AddMenuItem("Open Single-Day", "Open /single-day")
-	mCalc := systray.AddMenuItem("Open Calculate", "Open /calculate")
+	mOpen := systray.AddMenuItem("Genrar Horarios", "Open home page")
+	mLibrary := systray.AddMenuItem("Consultar Libraría", "Open /library")
 	systray.AddSeparator()
-	mQuit := systray.AddMenuItem("Quit", "Stop server and exit")
+	mQuit := systray.AddMenuItem("Apagar", "Detiene la aplicación")
 
 	// Handle clicks
 	go func() {
@@ -162,10 +160,6 @@ func onReady() {
 			case <-mLibrary.ClickedCh:
 				// works whether your route is /library or /library.html
 				openBrowser(appURL + "library")
-			case <-mSingle.ClickedCh:
-				openBrowser(appURL + "single-day")
-			case <-mCalc.ClickedCh:
-				openBrowser(appURL + "calculate")
 			case <-mQuit.ClickedCh:
 				systray.Quit() // triggers onExit
 				return
@@ -186,6 +180,8 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Open browser on first launch
+	openBrowser(appURL + "index.html")
 	// Handle OS signals as a backup (e.g., from Task Manager)
 	go func() {
 		c := make(chan os.Signal, 1)

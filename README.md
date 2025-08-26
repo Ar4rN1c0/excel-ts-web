@@ -75,7 +75,7 @@ executable
 - **Frontend:** TypeScript, HTML, CSS (bundled with Vite)
 - **Desktop wrapper:** Go (`embed`, `net/http`), `systray`
 - **Excel I/O:** client-side parsers (see `src/helpers/fileType/excel`)
-- **Testing:** your test suite under `/tests`
+- **Testing:** JEST-like under `tests`folder.
 
 ---
 
@@ -86,10 +86,13 @@ The scheduler accepts event configuration either as **Excel** or via the **Confi
 - **Excel input (`.xlsx`)**  
   - `Configuración` sheet: event parameters, durations, dates  
   - `Equipos` sheet: list of teams, categories  
+  - A sample excel input can be generated via `src/generate.js` or by downloading the sample from the main page.
 
 - **Config Form (in-app)**  
   - Directly enter durations, categories, and events from the browser UI  
   - Supports adding teams manually without Excel  
+  - It automatically saves current state to cookies, so there's no need to fill it up from scratch every time.
+  - It has strict validation and autocomplete.
 
 ---
 
@@ -106,10 +109,10 @@ After scheduling, the app can produce multiple types of exports:
   - 📦 `.zip` containing all Excel outputs  
 
 - **Data export**
-  - 🗂️ `.json` file capturing the complete state  
+  - 🗂️ `.json` file capturing the complete state to be used at `/library`
 
 - **Webpage**
-  - 📊 HTML timetable (interactive table view)  
+  - 📊 HTML timetable.
 
 ---
 
@@ -142,14 +145,13 @@ node --run test
 
 1) **Build**
 ```shell
-pnpm build
-# emits ./dist with index.html + assets
+pnpm build # emits ./dist with index.html + assets
 ```
 2) **Serve the static bundle** (any static server)
 ```shell
-npx serve dist
-# or your preferred static host
+npx serve dist # or your preferred static host
 ```
+> The static bundle can be deployed to simple hosting services that allow it e.g. Netlify or Hostinger.
 ---
 
 ### Option C — Package & run the desktop tray app
@@ -171,8 +173,8 @@ go run .             # starts local HTTP server + system tray
 ```
 4) **Build a binary**
 ```shell
-go build -o F1Scheduler .
-# Windows example shown above; macOS/Linux work too.
+# Windows example shown above; macOS/Linux work too 
+GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -H=windowsgui" -o F1Scheduler.exe .
 ```
 When the tray app starts, use the tray menu:
 - **Open App** → `index.html`
