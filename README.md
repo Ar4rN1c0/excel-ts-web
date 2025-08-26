@@ -1,143 +1,217 @@
 # F1 in Schools – Event Scheduler
 
-This project is a complete scheduling system for organizing and managing **multi-day F1 in Schools events**. It generates team schedules, assigns judges, and produces visual and Excel-based outputs for organizers.
+A complete scheduling system for **multi-day F1 in Schools events**. It generates team schedules, assigns judges, checks conflicts, and produces visual + Excel outputs for organizers. You can run it as a web app during development, or as a packaged desktop tray app.
 
 ---
 
 ## Features
 
-- 📅 Supports **multi-day event scheduling**
-- 🏎️ Automatically assigns:
+- 📅 **Multi-day** event scheduling
+- 🏎️ Automatic assignment of:
   - Scrutiny
-  - Technical and Enterprise Portfolios
+  - Technical & Enterprise Portfolios
   - Verbal Presentations
   - Races (qualifiers)
-  - Global events (e.g., opening talks, award ceremonies)
-- 👨‍⚖️ Judge allocation with concurrency rules
-- ⏱️ Collision-free time-slot scheduling
-- 📊 Interactive timeline visualization
-- 📤 Excel export for:
-  - Master schedule
-  - Individual team schedules
-  - Judge schedules
-- 🧪 Unit-tested core algorithms (e.g. conflict detection, windowing)
-- 🧠 Smart time-slot allocation with priority handling
+  - Global events (opening talk, awards, …)
+- 👨‍⚖️ **Judge allocation** with concurrency rules
+- ⏱️ **Collision-free** time-slot scheduling
+- 🧠 Smart windowing & priority handling
+- 📊 **Interactive timeline** (views for teams/judges/global)
+- 📤 **Export options** for organizers & stakeholders
+- 🧪 **Unit tests** for core algorithms (conflicts, windowing, edge cases)
+- 🖥️ **Desktop tray app** (Windows/macOS/Linux) that hosts the UI locally
 
 ---
 
-## Project Structure
+## Repository Layout
 
-```
-src/
-│
-├── helpers/
-│   ├── assigners/       # Logic for assigning events
-│   ├── generators/      # Random data generation (teams, judges)
-│   ├── math/            # Time window + conflict calculations
-│   └── views/           # HTML/Excel output rendering
-│
-├── types/               # Shared types (Equipo, Evento, Juez, Config, etc.)
-├── style.css            # Basic responsive styling for UI
-├── main.ts             # Main entry point
-└── excel/               # Excel export and input parsing
-```
+The repo has two main areas: the **frontend app** (`src/…`) and the **desktop wrapper** (`executable/…`). They are built independently.
 
----
+### Frontend application (`src/`)
 
-## Setup
+src
+├── helpers
+│   ├── assigners/        # Event & judge assignment logic
+│   ├── fileType/         # Parsers/serializers for supported inputs
+│   │   ├── excel/
+│   │   │   └── files/    # Sample templates / fixtures
+│   │   ├── json/
+│   │   └── zip/
+│   ├── generators/       # Dummy data / seeds for testing
+│   ├── math/             # Time windows, collision checks, constraints
+│   ├── schedulers/       # Multi-/single-day scheduling engines
+│   ├── storage/          # Persistence helpers (local/session)
+│   └── validation/       # Schema + guardrails for inputs
+├── lib/                  # UI helpers (ARIA labels, validators, utils)
+├── styles/               # Global styles (library.css, main.css, …)
+├── types/                # Shared types (Equipo, Evento, Juez, Config, …)
+└── views/                # All UI components: forms, inputs, tables, pages
+    ├── components/
+    └── main/
 
-### 1. Install Dependencies
+### Desktop tray app (`executable/`)
 
-```bash
-pnpm i
-```
-
-### 2. Run the Scheduler
-
-You can either run it directly via a static server or bundle it:
-
-```bash
-node --run dev
-# or
-pnpm dev
-```
-
-### 3. Import Config from Excel (Optional)
-
-You can upload a `.xlsx` file to load team/event configuration dynamically. Use the included \`dummy-input.xlsx\` generator for testing:
-
-```bash
-node scripts/generate.js
-```
-
----
-
-## File: `dummy-input.xlsx`
-
-This contains:
-
-- A `Configuración` sheet (parameters, durations, dates)
-- An `Equipos` sheet (list of teams and categories)
-
-You can edit this manually or regenerate it using the script above.
+executable
+├── F1Scheduler.exe       # Built binary (Windows example)
+├── _embed/
+│   └── dist/             # Mirrored frontend build (copied from ../dist)
+│       ├── assets/       # CSS/JS chunks (main-*.js, *.css, …)
+│       ├── index.html
+│       ├── library.html
+│       ├── test.html
+│       └── vite.svg
+├── go.mod
+├── go.sum
+├── main.go               # Systray app that serves embedded dist/ via HTTP
+├── res/
+│   └── app.ico           # Tray icon
+└── tools/
+    └── syncdist.go       # go:generate helper to mirror ../dist → ./_embed/dist
 
 ---
 
-## Roles Supported
+## Tech Stack
 
-- Jueces de:
-  - Portfolio Técnico
-  - Portfolio de Empresa
-  - Presentación Verbal
-  - Escrutinio
-- Personal de Registro
+- **Frontend:** TypeScript, HTML, CSS (bundled with Vite)
+- **Desktop wrapper:** Go (`embed`, `net/http`), `systray`
+- **Excel I/O:** client-side parsers (see `src/helpers/fileType/excel`)
+- **Testing:** your test suite under `/tests`
+
+---
+
+## Inputs
+
+The scheduler accepts event configuration either as **Excel** or via the **Config Form** in the UI.
+
+- **Excel input (`.xlsx`)**  
+  - `Configuración` sheet: event parameters, durations, dates  
+  - `Equipos` sheet: list of teams, categories  
+
+- **Config Form (in-app)**  
+  - Directly enter durations, categories, and events from the browser UI  
+  - Supports adding teams manually without Excel  
 
 ---
 
 ## Outputs
 
-After running the script:
+After scheduling, the app can produce multiple types of exports:
 
-- The webpage shows a **visual timeline** of all events.
-- Buttons allow exporting:
-  - 📄 Master Excel schedule
-  - 📄 Team-specific schedules
-  - 📄 Judge-specific schedules
+- **Excel**
+  - 📄 Master schedule (**Gantt-style**)  
+  - 📄 Per-judge schedules  
+  - 📄 Per-team schedules  
+
+- **Compressed archive**
+  - 📦 `.zip` containing all Excel outputs  
+
+- **Data export**
+  - 🗂️ `.json` file capturing the complete state  
+
+- **Webpage**
+  - 📊 HTML timetable (interactive table view)  
+
+---
+
+## Quick Start
+
+### Option A — Develop the web app
+
+1) **Install deps**
+pnpm i
+
+2) **Run dev server**
+pnpm dev
+# or
+node --run dev
+
+3) Open the printed local URL. Edit code in `src/…`; hot-reload will update pages under `views/`.
+
+4) **Run tests**
+pnpm test
+# or
+node --run test
+
+---
+
+### Option B — Build for production (web)
+
+1) **Build**
+pnpm build
+# emits ./dist with index.html + assets
+
+2) **Serve the static bundle** (any static server)
+npx serve dist
+# or your preferred static host
+
+---
+
+### Option C — Package & run the desktop tray app
+
+> The tray app embeds the **contents of `../dist`** into `executable/_embed/dist`. Make sure you’ve built the frontend first.
+
+1) **Build frontend**
+pnpm build           # produces ../dist
+
+2) **Mirror dist into the executable**
+cd executable
+go generate ./...    # runs tools/syncdist.go → copies ../dist → ./_embed/dist
+
+3) **Run the tray app**
+go run .             # starts local HTTP server + system tray
+
+4) **Build a binary**
+go build -o F1Scheduler .
+# Windows example shown above; macOS/Linux work too.
+
+When the tray app starts, use the tray menu:
+- **Open App** → `index.html`
+- **Open Library** → `library.html`
+- **Open Test** → `test.html`
+- **Quit** gracefully stops the server.
 
 ---
 
 ## Testing
 
-To run tests:
+Run the full test suite:
 
-```bash
-node --run test
-# or
 pnpm test
-```
+# or
+node --run test
 
-Tests cover:
+Covers:
 - Time-window extraction
 - Concurrency checks
 - Collision detection
-- Edge cases (multi-day, back-to-back events)
+- Multi-day & back-to-back edge cases
 
 ---
 
-## Example Event Duration Config
+## Example Duration Config (JSON)
 
-```json
 {
   "Duración registro": 5,
   "Duración Escrutinio Entry": 15,
   "Duración Portfolio Técnico Professional": 15,
   "Duración Presentación Verbal Entry": 10
 }
-```
 
 ---
 
+## Troubleshooting
 
-## 📜 License
+- **The tray app shows a blank page**  
+  Ensure you ran `pnpm build` and then `go generate ./...` inside `executable/` so `_embed/dist` isn’t empty.
 
-MIT
+- **`go generate` fails with “dist folder not found at ../dist”**  
+  You’re missing the frontend build. Run `pnpm build` at repo root.
+
+- **Static assets 404**  
+  Check that `_embed/dist/assets/*` exists and filenames match the ones referenced by the HTML (Vite content-hashes).
+
+---
+
+## License
+
+MIT (or your chosen license).
