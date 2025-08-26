@@ -118,32 +118,38 @@ After scheduling, the app can produce multiple types of exports:
 ### Option A — Develop the web app
 
 1) **Install deps**
+```shell
 pnpm i
+```
 
 2) **Run dev server**
+```shell
 pnpm dev
 # or
 node --run dev
-
+```
 3) Open the printed local URL. Edit code in `src/…`; hot-reload will update pages under `views/`.
 
 4) **Run tests**
+```shell
 pnpm test
 # or
 node --run test
-
+```
 ---
 
 ### Option B — Build for production (web)
 
 1) **Build**
+```shell
 pnpm build
 # emits ./dist with index.html + assets
-
+```
 2) **Serve the static bundle** (any static server)
+```shell
 npx serve dist
 # or your preferred static host
-
+```
 ---
 
 ### Option C — Package & run the desktop tray app
@@ -151,19 +157,23 @@ npx serve dist
 > The tray app embeds the **contents of `../dist`** into `executable/_embed/dist`. Make sure you’ve built the frontend first.
 
 1) **Build frontend**
+```shell
 pnpm build           # produces ../dist
-
+```
 2) **Mirror dist into the executable**
+```shell
 cd executable
 go generate ./...    # runs tools/syncdist.go → copies ../dist → ./_embed/dist
-
+```
 3) **Run the tray app**
+```shell
 go run .             # starts local HTTP server + system tray
-
+```
 4) **Build a binary**
+```shell
 go build -o F1Scheduler .
 # Windows example shown above; macOS/Linux work too.
-
+```
 When the tray app starts, use the tray menu:
 - **Open App** → `index.html`
 - **Open Library** → `library.html`
@@ -175,11 +185,11 @@ When the tray app starts, use the tray menu:
 ## Testing
 
 Run the full test suite:
-
+```shell
 pnpm test
 # or
 node --run test
-
+```
 Covers:
 - Time-window extraction
 - Concurrency checks
