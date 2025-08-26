@@ -199,14 +199,14 @@ Covers:
 ---
 
 ## Example Duration Config (JSON)
-
+```json
 {
   "Duración registro": 5,
   "Duración Escrutinio Entry": 15,
   "Duración Portfolio Técnico Professional": 15,
   "Duración Presentación Verbal Entry": 10
 }
-
+```
 ---
 
 ## Troubleshooting
@@ -221,7 +221,3 @@ Covers:
   Check that `_embed/dist/assets/*` exists and filenames match the ones referenced by the HTML (Vite content-hashes).
 
 ---
-
-## License
-
-MIT (or your chosen license).
