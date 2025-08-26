@@ -1,0 +1,277 @@
+/* === Schedule Source UI ===
+   Adapted to match the form design system.
+   Uses consistent design tokens and styling patterns.
+*/
+
+/* ---------- Design tokens ---------- */
+:root {
+  --space-1: 3rem;
+  --space-2: .5rem;
+  --space-3: .75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+
+  --radius-1: 6px;
+  --radius-2: 10px;
+
+  --line: 1px;
+  --line-color: rgba(0,0,0,.08);
+
+  --bg-surface: #ffffff;
+  --bg-page: #fafafa;
+  --fg-muted: #555;
+  --fg-error: #8b1a1a;
+  --ring: #4d90fe;
+  --primary: #4d90fe;
+  --primary-hover: #3c7de8;
+}
+
+.schedule-source {
+  box-sizing: border-box;
+  width: min(560px, 94vw);
+  margin: var(--space-6) auto;
+  padding: var(--space-4) var(--space-5);
+  background: var(--bg-surface);
+  border: var(--line) solid var(--line-color);
+  border-radius: var(--radius-2);
+  box-shadow: 0 1px 10px rgba(0,0,0,.04);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  transition: box-shadow .15s ease;
+}
+
+.schedule-source:hover {
+  box-shadow: 0 2px 16px rgba(0,0,0,.06);
+}
+
+/* Responsive adjustments */
+@media (max-width: 720px) {
+  .schedule-source {
+    margin: var(--space-4) auto;
+    padding: var(--space-4);
+    width: 94vw;
+  }
+}
+
+@media (max-width: 480px) {
+  .schedule-source {
+    margin: var(--space-3) auto;
+    padding: var(--space-3);
+  }
+}
+
+.schedule-source__title {
+  margin: 0;
+  text-align: center;
+  font-size: 1.125rem;
+  line-height: 1.4;
+  font-weight: 600;
+  color: #333;
+}
+
+.schedule-source__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.schedule-source__label {
+  display: inline-block;
+  font-weight: 600;
+  color: #222;
+  font-size: 0.95rem;
+  margin-bottom: var(--space-2);
+}
+
+.schedule-source__row {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+/* Stack on mobile */
+@media (max-width: 480px) {
+  .schedule-source__row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+}
+
+.schedule-source__select,
+.schedule-source__file {
+  box-sizing: border-box;
+  padding: .55em .7em;
+  border: 1px solid #cfcfcf;
+  border-radius: var(--radius-1);
+  background: #fff;
+  min-height: 2.25rem;
+  flex: 1 1 auto;
+  min-width: 0;
+  color: #222;
+  transition: border-color .15s ease, box-shadow .15s ease;
+}
+
+.schedule-source__select:hover,
+.schedule-source__file:hover {
+  border-color: #aaa;
+}
+
+.schedule-source__select:focus,
+.schedule-source__file:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-color: var(--ring);
+}
+
+.schedule-source__select[aria-invalid="true"],
+.schedule-source__file[aria-invalid="true"] {
+  border-color: #d33;
+  box-shadow: 0 0 0 3px rgba(221, 51, 51, 0.12);
+}
+
+.schedule-source__separator {
+  text-align: center;
+  color: var(--fg-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
+  position: relative;
+  margin: var(--space-3) 0;
+}
+
+.schedule-source__separator::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: var(--line);
+  background: var(--line-color);
+  z-index: 1;
+}
+
+.schedule-source__separator span {
+  background: var(--bg-surface);
+  padding: 0 var(--space-3);
+  position: relative;
+  z-index: 2;
+}
+
+.schedule-source__actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-3);
+}
+
+/* Stack buttons on mobile */
+@media (max-width: 480px) {
+  .schedule-source__actions {
+    flex-direction: column;
+  }
+}
+
+.schedule-source__btn {
+  padding: .55em .9em;
+  border: 1px solid #cfcfcf;
+  background: #f7f7f7;
+  border-radius: var(--radius-1);
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .02s ease;
+  font-weight: 600;
+  color: #222;
+  min-width: 100px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.schedule-source__btn:hover {
+  background: #f0f0f0;
+}
+
+.schedule-source__btn:active {
+  transform: translateY(1px);
+}
+
+.schedule-source__btn:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.schedule-source__btn--primary {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #ffffff;
+}
+
+.schedule-source__btn--primary:hover {
+  background: var(--primary-hover);
+  border-color: var(--primary-hover);
+}
+
+.schedule-source__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.schedule-source__btn:disabled:hover {
+  background: #f7f7f7;
+  transform: none;
+}
+
+.schedule-source__btn--primary:disabled:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+
+.schedule-source__helper {
+  font-size: 0.9rem;
+  color: var(--fg-muted);
+  margin-top: var(--space-2);
+  line-height: 1.4;
+}
+
+.schedule-source__error {
+  font-size: 0.875rem;
+  margin-top: var(--space-1);
+  color: var(--fg-error);
+}
+
+/* Wrapper for centering the component */
+.schedule-source-wrapper {
+  display: grid;
+  place-items: center;
+  padding: var(--space-6) var(--space-4);
+  min-height: 60dvh;
+  background: var(--bg-page);
+}
+
+/* Mobile wrapper adjustments */
+@media (max-width: 480px) {
+  .schedule-source-wrapper {
+    padding: var(--space-4) var(--space-2);
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  .schedule-source,
+  .schedule-source__btn,
+  .schedule-source__select,
+  .schedule-source__file {
+    transition: none !important;
+  }
+}
+
+/* Visibility helpers */
+.hidden { 
+  display: none !important; 
+}
+
+.field-error {
+  color: red
+}
+

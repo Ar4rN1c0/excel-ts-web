@@ -47,7 +47,7 @@ export const dummyConfig: GlobalConfig = {
     "Duración Escrutinio Fase 1": 10,
     "Duración Escrutinio Fase 2": 10,
     "Duración Escrutinio Fase 3": 10,
-    "Duración Cómputo de Puntos": 90,
+    "Duración Knockouts - Eliminatorias": 90,
 }
 
 const showResult = (minsTaken: number) => {

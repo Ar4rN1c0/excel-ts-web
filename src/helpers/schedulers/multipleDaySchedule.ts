@@ -10,253 +10,247 @@ import { getLastEventEndBeforeCeremony } from "../math/calculateTime";
 import { assignDesestructuradoPipelinedScrutiny } from "../assigners/assignDesestructuradoPipelinedScrutiny";
 import { assignEstructuradoPipelinedScrutiny } from "../assigners/assignEstructuradoPipelinedScrutiny";
 
+/** Read phases: Duración Escrutinio Fase 1..N from config */
 function getEstructuradoPhases(config: GlobalConfig): number[] {
-    const phaseDurations: number[] = [];
-    let phase = 1;
-    while (true) {
-        const key = `Duración Escrutinio Fase ${phase}` as keyof GlobalConfig;
-        if (typeof config[key] !== "number") break;
-        phaseDurations.push(config[key] as number);
-        phase++;
-    }
-    return phaseDurations;
+  const durations: number[] = [];
+  for (let i = 1; ; i++) {
+    const key = `Duración Escrutinio Fase ${i}` as keyof GlobalConfig;
+    if (typeof config[key] !== "number") break;
+    durations.push(config[key] as number);
+  }
+  return durations;
 }
 
-export const multipleDaySchedule = (
-    teams: Equipo[],
-    windows: Date[][],
-    judgesVerbal: Juez[],
-    judgesScrutiny: Juez[],
-    judgesPortfolioEmpresa: Juez[],
-    judgesPortfolioTecnico: Juez[],
-    personelRegister: number,
-    config: GlobalConfig
-) => {
-    const numOfDays = config.NumberOfDays;
-    const ceremonyDuration = config["Duración Ceremonia de Clausura y Premios"];
-    const ceremonyStart = new Date(windows[numOfDays - 1][1].getTime() - mins(ceremonyDuration));
-    // Removed unused ceremonyEnd variable
+function getCeremonyStart(windows: Date[][], numOfDays: number, ceremonyMinutes: number): Date {
+  const endOfLastDay = windows[numOfDays - 1]?.[1];
+  if (!endOfLastDay) throw new Error("Ventanas de tiempo inválidas: falta el fin del último día.");
+  return new Date(endOfLastDay.getTime() - mins(ceremonyMinutes));
+}
 
-    // --- Descansos assignment ---
-    const descansos = generateDescansos(config);
-    descansos.forEach(descanso => {
-        assignGlobalEvent(descanso.name, descanso.start, descanso.duration, teams)
+function assignGeneratedDescansos(config: GlobalConfig, teams: Equipo[]) {
+  const descansos = generateDescansos(config);
+  descansos.forEach(d => assignGlobalEvent(d.name, d.start, d.duration, teams));
+}
+
+function registrationDurations(config: GlobalConfig) {
+  const d = config["Duración registro"];
+  return { Entry: d, Development: d, Professional: d };
+}
+
+function raceDurations(config: GlobalConfig) {
+  return {
+    Entry: config["Duración Carrera Entry"],
+    Development: config["Duración Carrera Development"],
+    Professional: config["Duración Carrera Professional"],
+  };
+}
+
+function heatsPerCategory(config: GlobalConfig) {
+  return {
+    Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
+    Development: { max: config["Carreras Development"], min: config["Carreras Development"] },
+    Professional: { max: config["Carreras Professional"], min: config["Carreras Professional"] },
+  };
+}
+
+/** Assign scrutiny according to modality */
+function assignScrutiny(
+  modality: GlobalConfig["Modalidad de Escrutinio"],
+  teams: Equipo[],
+  startTimes: Date[],
+  hardEnd: Date,
+  judgesScrutiny: Juez[],
+  config: GlobalConfig
+) {
+  if (modality === "Desestructurado") {
+    assignDesestructuradoPipelinedScrutiny(teams, startTimes, hardEnd, judgesScrutiny.length, {
+      Development: config["Duración Escrutinio Development"],
+      Entry: config["Duración Escrutinio Entry"],
+      Professional: config["Duración Escrutinio Professional"],
     });
-    assignDescansos(windows, teams);
+    return;
+  }
 
-    // Registro
-    const registroDurations = {
-        Entry: config["Duración registro"],
-        Development: config["Duración registro"],
-        Professional: config["Duración registro"]
-    };
+  // Estructurado
+  const phases = getEstructuradoPhases(config);
+  if (phases.length !== judgesScrutiny.length) {
+    throw new Error(
+      "Nº de Jueces para el escrutinio debe coincidir con nº de fases en estructurado"
+    );
+  }
+  assignEstructuradoPipelinedScrutiny(teams, startTimes, hardEnd, phases);
+}
 
-    if (config["Dia de Escrutinio"]) {
-        // ========================== CON DÍA DE ESCRUTINIO ==========================
-        const day1Start = windows[0][0];
-        const day1End = windows[0][1];
+/** Everything that happens after Pit Display and before the ceremony (races, portfolios, verbal, points, ceremony) */
+function assignActivitiesAndCeremony(
+  teams: Equipo[],
+  actividadesStart: Date,
+  ceremonyStart: Date,
+  config: GlobalConfig,
+  judges: {
+    verbal: Juez[];
+    empresa: Juez[];
+    scrutiny: Juez[];
+    tecnico: Juez[];
+  },
+  numParallelRaces: number,
+  ceremonyDuration: number
+) {
+  if (actividadesStart >= ceremonyStart) {
+    throw new Error(
+      "No hay hueco suficiente para carreras, portfolios y presentaciones entre el Pit Display y la Ceremonia."
+    );
+  }
 
-        assignSmallEvent(
-            teams,
-            day1Start,
-            day1End,
-            personelRegister,
-            registroDurations,
-            "Registro"
-        );
-        const registerEnds: Date[] = teams.map(
-            t => ((t as any).horario.find((e: any) => e.nombre === "Registro")?.end)
-        );
+  assignClassificatoryRaces(
+    teams,
+    {
+      duration: raceDurations(config),
+      heatsPerCategory: heatsPerCategory(config),
+    },
+    actividadesStart,
+    ceremonyStart,
+    numParallelRaces
+  );  
 
-        if (config["Modalidad de Escrutinio"] === "Desestructurado") {
-            assignDesestructuradoPipelinedScrutiny(
-                teams,
-                registerEnds,
-                day1End,
-                judgesScrutiny.length,
-                {
-                    Development: config["Duración Escrutinio Development"],
-                    Entry: config["Duración Escrutinio Entry"],
-                    Professional: config["Duración Escrutinio Professional"]
-                }
-            );
-        } else {
-            // Estructurado
-            const phases = getEstructuradoPhases(config);
-            if (phases.length !== judgesScrutiny.length) {
-                throw new Error("Nº de Jueces para el escrutinio debe coincidir con nº de fases en estructurado");
-            }
-            assignEstructuradoPipelinedScrutiny(
-                teams,
-                registerEnds,
-                day1End,
-                phases
-            );
-        }
+  assignPortfoliosAndVerbal(teams, actividadesStart, ceremonyStart, config, judges);
 
-        // SIGUIENTE DÍA: charla, pit display, todo lo demás
-        if (windows.length < 2) {
-            throw new Error("Se requiere al menos dos días para Dia de Escrutinio.");
-        }
+  // Knockouts - Eliminatorias (justo antes de la ceremonia)
+  const lastEnd = getLastEventEndBeforeCeremony(teams);
+  assignGlobalEvent("Knockouts - Eliminatorias", lastEnd, config["Duración Knockouts - Eliminatorias"], teams);
 
-        const nextDayStart = windows[1][0];
+  // Ceremonia
+  assignGlobalEvent("Ceremonia de Clausura y Premios", ceremonyStart, ceremonyDuration, teams);
+}
 
-        const endCharla = assignGlobalEvent(
-            "Charla/Presentación",
-            nextDayStart,
-            config["Duración Charla/Presentación"],
-            teams
-        );
-        const endPitDisplay = assignGlobalEvent(
-            "Pit Display",
-            endCharla,
-            config["Duración Montaje del Pit Display"],
-            teams
-        );
+export function multipleDaySchedule(
+  teams: Equipo[],
+  windows: Date[][],
+  judgesVerbal: Juez[],
+  judgesScrutiny: Juez[],
+  judgesPortfolioEmpresa: Juez[],
+  judgesPortfolioTecnico: Juez[],
+  personelRegister: number,
+  config: GlobalConfig
+): void {
+  // ---- Validaciones base ----
+  const numOfDays = config.NumberOfDays;
+  if (!Number.isInteger(numOfDays) || numOfDays < 1) {
+    throw new Error("NumberOfDays inválido en config.");
+  }
+  if (windows.length < numOfDays) {
+    throw new Error("No hay suficientes ventanas de tiempo para NumberOfDays.");
+  }
 
-        const actividadesStart = endPitDisplay;
-        const actividadesEnd = ceremonyStart;
+  const ceremonyDuration = config["Duración Ceremonia de Clausura y Premios"];
+  const ceremonyStart = getCeremonyStart(windows, numOfDays, ceremonyDuration);
 
-        if (actividadesStart >= actividadesEnd) {
-            throw new Error("No hay hueco suficiente para carreras, portfolios y presentaciones entre el Pit Display y la Ceremonia.");
-        }
+  // ---- Descansos ----
+  assignGeneratedDescansos(config, teams);
+  assignDescansos(windows, teams);
 
-        assignClassificatoryRaces(teams, {
-            duration: {
-                Entry: config["Duración Carrera Entry"],
-                Development: config["Duración Carrera Development"],
-                Professional: config["Duración Carrera Professional"]
-            },
-            heatsPerCategory: {
-                Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
-                Development: { max: config["Carreras Development"], min: config["Carreras Development"] },
-                Professional: { max: config["Carreras Professional"], min: config["Carreras Professional"] }
-            },
-        }, actividadesStart, actividadesEnd, config["Nº de carreras a la vez"]);
+  // ---- Registro ----
+  const regDurations = registrationDurations(config);
 
-        assignPortfoliosAndVerbal(teams, actividadesStart, actividadesEnd, config, {
-            verbal: judgesVerbal,
-            empresa: judgesPortfolioEmpresa,
-            scrutiny: judgesScrutiny,
-            tecnico: judgesPortfolioTecnico
-        });
+  if (config["Dia de Escrutinio"]) {
+    // ======= Día 1: Registro + Escrutinio =======
+    const [day1Start, day1End] = windows[0];
 
-        // ========== Añadir "Cómputo de Puntos" justo antes de la ceremonia ==========
-        const lastEnd = getLastEventEndBeforeCeremony(teams);
-        const puntoDuration = config["Duración Cómputo de Puntos"];
-        assignGlobalEvent(
-            "Cómputo de Puntos",
-            lastEnd,
-            puntoDuration,
-            teams
-        );
+    assignSmallEvent(teams, day1Start, day1End, personelRegister, regDurations, "Registro");
+    const registerEnds: Date[] = teams.map(
+      team => team.horario.find(event => event.nombre === "Registro")?.end
+    ) as Date[];
+    assignScrutiny(
+      config["Modalidad de Escrutinio"],
+      teams,
+      registerEnds,
+      day1End,
+      judgesScrutiny,
+      config
+    );
 
-        // Ceremonia de Clausura y Premios
-        assignGlobalEvent(
-            "Ceremonia de Clausura y Premios",
-            ceremonyStart,
-            ceremonyDuration,
-            teams
-        );
-    } else {
-        // ========================== SIN DÍA DE ESCRUTINIO ==========================
-        const regStart = windows[0][0];
-        const regEnd = windows[0][1];
-        assignSmallEvent(
-            teams,
-            regStart,
-            regEnd,
-            personelRegister,
-            registroDurations,
-            "Registro"
-        );
-        const registerEnds: Date[] = teams.map(
-            t => ((t as any).horario.find((e: any) => e.nombre === "Registro")?.end)
-        );
-
-        // Charla y pit display justo tras registro (el máximo de los registros)
-        const charlaStart = new Date(Math.max(...registerEnds.map(d => d.getTime())));
-        const endCharla = assignGlobalEvent(
-            "Charla/Presentación",
-            charlaStart,
-            config["Duración Charla/Presentación"],
-            teams
-        );
-        const endPitDisplay = assignGlobalEvent(
-            "Pit Display",
-            endCharla,
-            config["Duración Montaje del Pit Display"],
-            teams
-        );
-
-        // -- El resto (scrutinio, carreras, portfolios, verbal) se puede asignar en paralelo --
-        // Scrutinio
-        if (config["Modalidad de Escrutinio"] === "Desestructurado") {
-            assignDesestructuradoPipelinedScrutiny(
-                teams,
-                Array(teams.length).fill(endPitDisplay),
-                ceremonyStart,
-                judgesScrutiny.length,
-                {
-                    Development: config["Duración Escrutinio Development"],
-                    Entry: config["Duración Escrutinio Entry"],
-                    Professional: config["Duración Escrutinio Professional"]
-                }
-            );
-        } else {
-            // Estructurado
-            const phases = getEstructuradoPhases(config);
-            if (phases.length !== judgesScrutiny.length) {
-                throw new Error("Nº de Jueces para el escrutinio debe coincidir con nº de fases en estructurado");
-            }
-            assignEstructuradoPipelinedScrutiny(
-                teams,
-                Array(teams.length).fill(endPitDisplay),
-                ceremonyStart,
-                phases
-            );
-        }
-
-        const actividadesStart = endPitDisplay;
-        const actividadesEnd = ceremonyStart;
-
-        assignClassificatoryRaces(teams, {
-            duration: {
-                Entry: config["Duración Carrera Entry"],
-                Development: config["Duración Carrera Development"],
-                Professional: config["Duración Carrera Professional"]
-            },
-            heatsPerCategory: {
-                Entry: { max: config["Carreras Entry"], min: config["Carreras Entry"] },
-                Development: { max: config["Carreras Development"], min: config["Carreras Development"] },
-                Professional: { max: config["Carreras Professional"], min: config["Carreras Professional"] }
-            },
-        }, actividadesStart, actividadesEnd, config["Nº de carreras a la vez"]);
-
-        assignPortfoliosAndVerbal(teams, actividadesStart, actividadesEnd, config, {
-            verbal: judgesVerbal,
-            empresa: judgesPortfolioEmpresa,
-            scrutiny: judgesScrutiny,
-            tecnico: judgesPortfolioTecnico
-        });
-
-        // ========== Añadir "Cómputo de Puntos" justo antes de la ceremonia ==========
-        const lastEnd = getLastEventEndBeforeCeremony(teams);
-        const puntoDuration = config["Duración Cómputo de Puntos"];
-        assignGlobalEvent(
-            "Cómputo de Puntos",
-            lastEnd,
-            puntoDuration,
-            teams
-        );
-
-        // Ceremonia de Clausura y Premios
-        assignGlobalEvent(
-            "Ceremonia de Clausura y Premios",
-            ceremonyStart,
-            ceremonyDuration,
-            teams
-        );
+    // ======= Día siguiente: Charla + Pit + resto =======
+    if (windows.length < 2) {
+      throw new Error("Se requiere al menos dos días para Dia de Escrutinio.");
     }
-    // --- FINAL: LOGGING PARA DEPURACIÓN --- (REMOVED)
-};
+
+    const nextDayStart = windows[1][0];
+
+    const charlaEnd = assignGlobalEvent(
+      "Charla/Presentación",
+      nextDayStart,
+      config["Duración Charla/Presentación"],
+      teams
+    );
+    const pitEnd = assignGlobalEvent(
+      "Pit Display",
+      charlaEnd,
+      config["Duración Montaje del Pit Display"],
+      teams
+    );
+
+    assignActivitiesAndCeremony(
+      teams,
+      pitEnd,
+      ceremonyStart,
+      config,
+      {
+        verbal: judgesVerbal,
+        empresa: judgesPortfolioEmpresa,
+        scrutiny: judgesScrutiny,
+        tecnico: judgesPortfolioTecnico,
+      },
+      config["Nº de carreras a la vez"],
+      ceremonyDuration
+    );
+  } else {
+    // ======= Sin día específico de escrutinio =======
+    const [regStart, regEnd] = windows[0];
+
+    assignSmallEvent(teams, regStart, regEnd, personelRegister, regDurations, "Registro");
+
+    const registerEnds: Date[] = teams.map(
+      t => (t as any).horario.find((e: any) => e.nombre === "Registro")?.end
+    );
+
+    // Charla + Pit inmediatamente tras el último registro
+    const charlaStart = new Date(Math.max(...registerEnds.map(d => d.getTime())));
+    const charlaEnd = assignGlobalEvent(
+      "Charla/Presentación",
+      charlaStart,
+      config["Duración Charla/Presentación"],
+      teams
+    );
+    const pitEnd = assignGlobalEvent(
+      "Pit Display",
+      charlaEnd,
+      config["Duración Montaje del Pit Display"],
+      teams
+    );
+
+    // Escrutinio en paralelo al resto
+    assignScrutiny(
+      config["Modalidad de Escrutinio"],
+      teams,
+      Array(teams.length).fill(pitEnd),
+      ceremonyStart,
+      judgesScrutiny,
+      config
+    );
+
+    assignActivitiesAndCeremony(
+      teams,
+      pitEnd,
+      ceremonyStart,
+      config,
+      {
+        verbal: judgesVerbal,
+        empresa: judgesPortfolioEmpresa,
+        scrutiny: judgesScrutiny,
+        tecnico: judgesPortfolioTecnico,
+      },
+      config["Nº de carreras a la vez"],
+      ceremonyDuration
+    );
+  }
+}

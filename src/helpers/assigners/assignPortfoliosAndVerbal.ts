@@ -18,6 +18,8 @@ export function assignPortfoliosAndVerbal(teams: Equipo[], start: Date, end: Dat
             Professional: config["Duración Portfolio Técnico Professional"]
         },
         "Portfolio Técnico",
+        {},
+        false
     );
     // Portfolio de Empresa
     assignSmallEvent(
@@ -31,6 +33,8 @@ export function assignPortfoliosAndVerbal(teams: Equipo[], start: Date, end: Dat
             Professional: config["Duración Portfolio Empresa Professional"]
         },
         "Portfolio de Empresa",
+        {},
+        false
     );
     // Presentación Verbal
     assignSmallEvent(
@@ -44,5 +48,7 @@ export function assignPortfoliosAndVerbal(teams: Equipo[], start: Date, end: Dat
             Professional: config["Duración Presentación Verbal Professional"]
         },
         "Presentación Verbal",
+        {},
+        false
     );
 }

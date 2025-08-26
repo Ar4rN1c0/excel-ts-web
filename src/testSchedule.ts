@@ -52,7 +52,7 @@ export const config: GlobalConfig = {
   "Nº de carreras a la vez": 2,
   "Modalidad de Escrutinio": "Estructurado",
   "Dia de Escrutinio": "2025-06-17",
-  "Duración Cómputo de Puntos": 90
+  "Duración Knockouts - Eliminatorias": 90
 }
 
 async function test() {

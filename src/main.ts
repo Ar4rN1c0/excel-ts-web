@@ -3,13 +3,16 @@ import { generateJudges } from "./helpers/generators/generateJudges";
 import "./style.css";
 import { generateMainView } from "./views/main/generateMainView";
 import { assignJudgeSchedule } from "./helpers/assigners/assignJudgeTimetable";
-import {  GlobalConfig } from "./types/types";
+import { GlobalConfig } from "./types/types";
 import { multipleDaySchedule } from "./helpers/schedulers/multipleDaySchedule";
 import { getGlobalWindows } from "./helpers/math/windows";
 import { generateInputView } from "./views/main/generateInputView";
 import { showErrorUI } from "./views/components/errorHandler";
+import { getRoot } from "./lib/htmlTools";
 
-document.body.innerHTML = "";
+const root = getRoot();
+root.innerHTML = "";
+
 
 export const dummyConfig: GlobalConfig = {
   "Nº equipos de Entry": 10,
@@ -56,7 +59,7 @@ export const dummyConfig: GlobalConfig = {
   "Duración Escrutinio Fase 1": 10,
   "Duración Escrutinio Fase 2": 10,
   "Duración Escrutinio Fase 3": 10,
-  "Duración Cómputo de Puntos": 90
+  "Duración Knockouts - Eliminatorias": 90
 }
 
 
@@ -86,7 +89,7 @@ async function main() {
     const events = teams.flatMap(ev => ev.horario)
     const assignations = assignJudgeSchedule(judges, events, teams)
 
-    document.body.innerHTML = '';
+    root.innerHTML = '';
 
     generateMainView(teams, judges, assignations);
   } catch (error) {

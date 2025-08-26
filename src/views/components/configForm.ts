@@ -1,468 +1,117 @@
 import { handleFileInputChange } from "../../helpers/fileType/excel/handleInputChange";
-import { getCookie, setCookie } from "../../helpers/storage/cookie";
-import { Equipo, GlobalConfig, StaticConfig } from "../../types/types";
+import { loadFromCookie, saveAllInputsToCookie } from "../../helpers/storage/cookie";
+import { clearErrorSummary, installStaticFieldValidation, validateDiaEscrutinioWithinDays, validateForm } from "../../helpers/validation/formValidation";
+import { el, getRoot, labeledInput } from "../../lib/htmlTools";
+import { renderCircuitos, renderDays, renderDescansos, updateCircuitosVisibility } from "../../lib/renderTools";
+import { createSection } from "../../lib/sectionTools";
+import { makeErrorFor, markOptional } from "../../lib/validationTools";
+import { Circuito, Descanso, Equipo, GlobalConfig, InputsMap, STATIC_FIELDS } from "../../types/types";
 
-const CONFIG_FORM_COOKIE = "configFormData";
-const COOKIE_EXPIRES_DAYS = 365;
-
-export async function createConfigForm(): Promise<{config: GlobalConfig, teams?: Equipo[]}> {
+export async function createConfigForm(): Promise<{ config: GlobalConfig; teams?: Equipo[] }> {
     return new Promise((resolve) => {
-        document.getElementById('configForm')?.remove();
+        document.getElementById("configForm")?.remove();
 
-        function saveToCookie(data: { [key: string]: string }) {
-            setCookie(CONFIG_FORM_COOKIE, JSON.stringify(data), COOKIE_EXPIRES_DAYS);
-        }
-        function loadFromCookie(): { [key: string]: string } | undefined {
-            const cookie = getCookie(CONFIG_FORM_COOKIE);
-            if (cookie) {
-                try {
-                    return JSON.parse(cookie);
-                } catch (e) { /* ignore */ }
-            }
-            return undefined;
-        }
+        const cookieData = loadFromCookie() || {};
 
-        const form = document.createElement('form');
-        form.id = 'configForm';
-        form.style.padding = "2em";
-        form.style.background = "#fafafa";
-        form.style.border = "1px solid #ccc";
-        form.style.margin = "2em";
+        const inputs: InputsMap = {};
+        let descansos: Descanso[] = [];
+        let circuitos: Circuito[] = [];
+        let teams: Equipo[] | undefined;
 
-        // Static fields as before
-        const staticFields: (keyof StaticConfig)[] = [
-            "Nº equipos de Entry",
-            "Nº equipos de Development",
-            "Nº equipos de Professional",
-            "Nº de Jueces para el portfolio técnico",
-            "Nº de Jueces para el portfolio de empresa",
-            "Nº de Jueces para el escrutinio",
-            "Nº de Jueces para la presentación verbal",
-            "Nº de personal para el registro",
-            "Carreras Entry",
-            "Carreras Development",
-            "Carreras Professional",
-            "NumberOfDays",
-            "Duración registro",
-            "Duración Charla/Presentación",
-            "Duración Montaje del Pit Display",
-            "Duración Escrutinio Entry",
-            "Duración Escrutinio Development",
-            "Duración Escrutinio Professional",
-            "Duración Portfolio Técnico Entry",
-            "Duración Portfolio Técnico Development",
-            "Duración Portfolio Técnico Professional",
-            "Duración Portfolio Empresa Entry",
-            "Duración Portfolio Empresa Development",
-            "Duración Portfolio Empresa Professional",
-            "Duración Presentación Verbal Entry",
-            "Duración Presentación Verbal Development",
-            "Duración Presentación Verbal Professional",
-            "Duración Ceremonia de Clausura y Premios",
-            "Duración Carrera Entry",
-            "Duración Carrera Development",
-            "Duración Carrera Professional",
-            "Duración Cómputo de Puntos",
-            "Nº de carreras a la vez"
-        ];
+        const errorSummary = el("div", {
+            id: "configForm-errors",
+            role: "alert",
+            "aria-live": "polite",
+            tabIndex: -1,
+            className: "errorSummary hidden",
+        });
 
-        function labeledInput(label: string, name: string, type = 'number') {
-            const div = document.createElement('div');
-            div.style.marginBottom = "1em";
-            const lbl = document.createElement('label');
-            lbl.textContent = label + ': ';
-            lbl.htmlFor = name;
-            const input = document.createElement('input');
-            input.type = type;
-            input.name = name;
-            input.id = name;
+        const form = el("form", { id: "configForm", className: "form", "aria-describedby": "configForm-errors" });
+        form.append(errorSummary);
+
+        const generalesFs = el("fieldset", { className: "section" });
+        const generalesLegend = el("legend", { textContent: "Datos generales" });
+        generalesFs.append(generalesLegend);
+        form.append(generalesFs);
+
+        // Static fields
+        for (const field of STATIC_FIELDS) {
+            const { container, input } = labeledInput(field, field) as unknown as {
+                container: HTMLElement;
+                input: HTMLInputElement;
+            };
             input.required = true;
-            input.style.marginLeft = "1em";
-            input.style.width = "6em";
-            div.appendChild(lbl);
-            div.appendChild(input);
-            return { div, input };
-        }
-
-        const inputs: { [key: string]: HTMLInputElement | HTMLSelectElement } = {};
-        for (const field of staticFields) {
-            const { div, input } = labeledInput(field, field);
+            container.append(makeErrorFor(input, `${field}-err`));
             inputs[field] = input;
-            form.appendChild(div);
+            if (cookieData[field]) input.value = cookieData[field];
+            generalesFs.append(container);
         }
+        installStaticFieldValidation(inputs);
 
         // Days container
-        const daysContainer = document.createElement('div');
-        daysContainer.id = "daysContainer";
-        form.appendChild(daysContainer);
+        const { fieldset: daysFs, container: daysContainer } = createSection({
+            id: "daysFs",
+            legendText: "Días de competición",
+            containerId: "daysContainer",
+            containerClass: "stack",
+        });
+        form.append(daysFs);
 
-        // ===== Descansos Section =====
-        const descansosContainer = document.createElement('div');
-        descansosContainer.id = "descansosContainer";
-        descansosContainer.style.margin = "2em 0";
-        descansosContainer.innerHTML = `<strong>Descansos (Breaks):</strong><br>`;
-        form.appendChild(descansosContainer);
+        // Descansos
+        const { fieldset: descansosFs, container: descansosContainer, addButton: addDescansoBtn } = createSection({
+            id: "descansosFs",
+            legendText: "Descansos (opcional)",
+            containerId: "descansosContainer",
+            containerClass: "stack",
+            addButton: { text: "+ Añadir descanso", ariaLabel: "Añadir descanso", className: "btn btn--add" },
+        });
+        form.append(descansosFs);
 
-        // Add Descanso button
-        const addDescansoBtn = document.createElement('button');
-        addDescansoBtn.type = "button";
-        addDescansoBtn.textContent = "+ Añadir descanso";
-        addDescansoBtn.style.display = "block";
-        addDescansoBtn.style.marginBottom = "1em";
-        descansosContainer.appendChild(addDescansoBtn);
-
-        let descansos: { name: string; start: string; end: string }[] = [];
-
-        // ====== Dia de Escrutinio ======
-        const diaEscrutinioDiv = document.createElement('div');
-        diaEscrutinioDiv.style.marginBottom = "1em";
-        const diaEscrutinioLabel = document.createElement('label');
-        diaEscrutinioLabel.textContent = "Dia de Escrutinio: ";
-        diaEscrutinioLabel.htmlFor = "Dia de Escrutinio";
-        const diaEscrutinioInput = document.createElement('input');
-        diaEscrutinioInput.type = 'date';
-        diaEscrutinioInput.name = "Dia de Escrutinio";
-        diaEscrutinioInput.id = "Dia de Escrutinio";
-        diaEscrutinioInput.style.marginLeft = "1em";
-        diaEscrutinioInput.style.width = "12em";
-        diaEscrutinioDiv.appendChild(diaEscrutinioLabel);
-        diaEscrutinioDiv.appendChild(diaEscrutinioInput);
-        form.appendChild(diaEscrutinioDiv);
+        // Dia de escrutinio (opcional)
+        const { container: diaEscrutinioContainer, input: diaEscrutinioInput } =
+            labeledInput("Dia de Escrutinio", "Dia de Escrutinio", "date", false) as unknown as {
+                container: HTMLElement;
+                input: HTMLInputElement;
+            };
+        markOptional(diaEscrutinioContainer, diaEscrutinioInput);
+        if (cookieData["Dia de Escrutinio"]) diaEscrutinioInput.value = cookieData["Dia de Escrutinio"];
         inputs["Dia de Escrutinio"] = diaEscrutinioInput;
+        form.append(diaEscrutinioContainer);
 
-        // ====== Modalidad de Escrutinio ======
-        const modalidadDiv = document.createElement('div');
-        modalidadDiv.style.marginBottom = "1em";
-        const modalidadLabel = document.createElement('label');
-        modalidadLabel.textContent = "Modalidad de Escrutinio: ";
-        modalidadLabel.htmlFor = "Modalidad de Escrutinio";
-        const modalidadSelect = document.createElement('select');
-        modalidadSelect.name = "Modalidad de Escrutinio";
-        modalidadSelect.id = "Modalidad de Escrutinio";
-        ["Estructurado", "Desestructurado"].forEach(optVal => {
-            const opt = document.createElement('option');
-            opt.value = optVal;
-            opt.textContent = optVal;
-            modalidadSelect.appendChild(opt);
-        });
+        // Modalidad
+        const modalidadDiv = el("div", { className: "section" });
+        const modalidadSelect = el("select", { id: "Modalidad de Escrutinio", name: "Modalidad de Escrutinio" }) as HTMLSelectElement;
+        ["Estructurado", "Desestructurado"].forEach((v) => modalidadSelect.append(el("option", { value: v, textContent: v })));
         modalidadSelect.required = true;
-        modalidadSelect.style.marginLeft = "1em";
-        modalidadDiv.appendChild(modalidadLabel);
-        modalidadDiv.appendChild(modalidadSelect);
-        form.appendChild(modalidadDiv);
+        if (cookieData["Modalidad de Escrutinio"]) modalidadSelect.value = cookieData["Modalidad de Escrutinio"];
+        const modalidadLabel = el("label", { htmlFor: "Modalidad de Escrutinio", textContent: "Modalidad de Escrutinio: " }) as HTMLLabelElement;
+        const modalidadErr = makeErrorFor(modalidadSelect, "modalidad");
+        modalidadDiv.append(modalidadLabel, modalidadSelect, modalidadErr);
         inputs["Modalidad de Escrutinio"] = modalidadSelect;
+        form.append(modalidadDiv);
 
-        // ====== Dynamic Circuit Fields ("Duración Escrutinio Fase N") ======
-        const circuitosContainer = document.createElement('div');
-        circuitosContainer.style.margin = "2em 0";
-        circuitosContainer.innerHTML = `<strong>Duración Escrutinio Fase (minutos):</strong><br>`;
-        form.appendChild(circuitosContainer);
-
-        const addCircuitoBtn = document.createElement('button');
-        addCircuitoBtn.type = "button";
-        addCircuitoBtn.textContent = "+ Añadir fase de escrutinio";
-        addCircuitoBtn.style.display = "block";
-        addCircuitoBtn.style.marginBottom = "1em";
-        circuitosContainer.appendChild(addCircuitoBtn);
-
-        let circuitos: { fase: number; duracion: number | '' }[] = [];
-
-        // Visibility function for circuitos section
-        function updateCircuitosVisibility() {
-            // Swapped: now shown ONLY for Estructurado
-            if ((inputs["Modalidad de Escrutinio"] as HTMLSelectElement).value === "Estructurado") {
-                circuitosContainer.style.display = "";
-            } else {
-                circuitosContainer.style.display = "none";
-            }
-        }
-
-        // Save all inputs (static, rounds, days, descansos, circuitos) to cookie
-        function saveAllInputsToCookie() {
-            const data: { [key: string]: string } = {};
-            Object.keys(inputs).forEach(key => {
-                data[key] = (inputs[key] as HTMLInputElement | HTMLSelectElement).value;
-            });
-            // Save descansos
-            descansos.forEach(d => {
-                if (d.name) {
-                    data[`Descanso ${d.name} Start`] = d.start;
-                    data[`Descanso ${d.name} End`] = d.end;
-                }
-            });
-            // Save circuitos
-            circuitos.forEach(c => {
-                if (c.fase && c.duracion !== '') {
-                    data[`Duración Escrutinio Fase ${c.fase}`] = String(c.duracion);
-                }
-            });
-            saveToCookie(data);
-        }
-
-        // Restore from cookie
-        const saved = loadFromCookie();
-
-        function renderDescansos() {
-            descansosContainer.querySelectorAll('.descanso-row').forEach(el => el.remove());
-            descansos.forEach((descanso, idx) => {
-                const row = document.createElement('div');
-                row.className = 'descanso-row';
-                row.style.marginBottom = '1em';
-
-                // Name
-                const nameInput = document.createElement('input');
-                nameInput.type = 'text';
-                nameInput.placeholder = 'Nombre';
-                nameInput.value = descanso.name;
-                nameInput.required = true;
-                nameInput.style.width = '8em';
-                nameInput.style.marginRight = '1em';
-                nameInput.oninput = () => {
-                    descansos[idx].name = nameInput.value;
-                    saveAllInputsToCookie();
-                };
-
-                // Start
-                const startInput = document.createElement('input');
-                startInput.type = 'datetime-local';
-                startInput.placeholder = 'Inicio';
-                startInput.value = descanso.start;
-                startInput.required = true;
-                startInput.style.marginRight = '1em';
-                startInput.oninput = () => {
-                    descansos[idx].start = startInput.value;
-                    saveAllInputsToCookie();
-                };
-
-                // End
-                const endInput = document.createElement('input');
-                endInput.type = 'datetime-local';
-                endInput.placeholder = 'Fin';
-                endInput.value = descanso.end;
-                endInput.required = true;
-                endInput.style.marginRight = '1em';
-                endInput.oninput = () => {
-                    descansos[idx].end = endInput.value;
-                    saveAllInputsToCookie();
-                };
-
-                // Remove button
-                const removeBtn = document.createElement('button');
-                removeBtn.type = 'button';
-                removeBtn.textContent = 'Eliminar';
-                removeBtn.style.marginLeft = '1em';
-                removeBtn.onclick = () => {
-                    descansos.splice(idx, 1);
-                    renderDescansos();
-                    saveAllInputsToCookie();
-                };
-
-                row.appendChild(nameInput);
-                row.appendChild(startInput);
-                row.appendChild(endInput);
-                row.appendChild(removeBtn);
-                descansosContainer.appendChild(row);
-            });
-        }
-
-        addDescansoBtn.onclick = () => {
-            descansos.push({ name: '', start: '', end: '' });
-            renderDescansos();
-            saveAllInputsToCookie();
-        };
-
-        // === CIRCUITOS ===
-        function renderCircuitos() {
-            circuitosContainer.querySelectorAll('.circuito-row').forEach(el => el.remove());
-            circuitos.forEach((circuito, idx) => {
-                const row = document.createElement('div');
-                row.className = 'circuito-row';
-                row.style.marginBottom = '1em';
-
-                const label = document.createElement('label');
-                label.textContent = `Duración Fase ${circuito.fase}: `;
-                label.style.marginRight = '0.5em';
-
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.min = '0';
-                input.value = circuito.duracion === '' ? '' : String(circuito.duracion);
-                input.required = true;
-                input.style.width = '7em';
-                input.oninput = () => {
-                    circuitos[idx].duracion = input.value === '' ? '' : Number(input.value);
-                    saveAllInputsToCookie();
-                };
-
-                // Remove button
-                const removeBtn = document.createElement('button');
-                removeBtn.type = 'button';
-                removeBtn.textContent = 'Eliminar';
-                removeBtn.style.marginLeft = '1em';
-                removeBtn.onclick = () => {
-                    circuitos.splice(idx, 1);
-                    renderCircuitos();
-                    saveAllInputsToCookie();
-                };
-
-                row.appendChild(label);
-                row.appendChild(input);
-                row.appendChild(removeBtn);
-                circuitosContainer.appendChild(row);
-            });
-        }
-
-        addCircuitoBtn.onclick = () => {
-            let maxFase = circuitos.length > 0 ? Math.max(...circuitos.map(c => c.fase)) : 0;
-            circuitos.push({ fase: maxFase + 1, duracion: '' });
-            renderCircuitos();
-            saveAllInputsToCookie();
-        };
-
-        // Restore static, rounds, descansos, dia escrutinio, modalidad, circuitos
-        if (saved) {
-            Object.entries(saved).forEach(([key, value]) => {
-                if (inputs[key]) (inputs[key] as HTMLInputElement | HTMLSelectElement).value = value;
-            });
-            // Restore descansos from saved keys
-            const descansoNames = Object.keys(saved)
-                .filter(key => key.startsWith("Descanso ") && key.endsWith(" Start"))
-                .map(key => key.slice(9, -6).trim());
-            descansos = descansoNames.map(name => ({
-                name,
-                start: saved[`Descanso ${name} Start`] || '',
-                end: saved[`Descanso ${name} End`] || ''
-            }));
-            // Restore circuitos
-            const circuitoFases = Object.keys(saved)
-                .filter(key => key.startsWith("Duración Escrutinio Fase "))
-                .map(key => Number(key.replace("Duración Escrutinio Fase ", "")))
-                .filter(n => !isNaN(n));
-            circuitos = circuitoFases.map(fase => ({
-                fase,
-                duracion: saved[`Duración Escrutinio Fase ${fase}`] !== undefined
-                    ? Number(saved[`Duración Escrutinio Fase ${fase}`])
-                    : ''
-            }));
-        }
-
-        function updateDayFieldsAndRestore(savedData?: { [key: string]: string }) {
-            const val = Number((inputs["NumberOfDays"] as HTMLInputElement).value);
-            daysContainer.innerHTML = '';
-            if (val && val > 0) {
-                for (let i = 1; i <= val; i++) {
-                    ["Start", "End"].forEach(part => {
-                        const div = document.createElement('div');
-                        div.style.marginBottom = "1em";
-                        const lbl = document.createElement('label');
-                        lbl.textContent = `Dia ${i} ${part}: `;
-                        lbl.htmlFor = `Dia ${i} ${part}`;
-                        const input = document.createElement('input');
-                        input.type = 'datetime-local';
-                        input.name = `Dia ${i} ${part}`;
-                        input.id = `Dia ${i} ${part}`;
-                        input.required = true;
-                        input.style.marginLeft = "1em";
-                        input.style.width = "16em";
-                        // Restore if possible
-                        if (savedData && savedData[input.name]) {
-                            input.value = savedData[input.name];
-                        }
-                        // Save on change
-                        input.addEventListener('change', saveAllInputsToCookie);
-                        inputs[`Dia ${i} ${part}`] = input;
-                        div.appendChild(lbl);
-                        div.appendChild(input);
-                        daysContainer.appendChild(div);
-                    });
-                }
-            }
-        }
-
-        // Add change listeners to all static fields, rounds, etc
-        Object.values(inputs).forEach(input => {
-            input.addEventListener('input', saveAllInputsToCookie);
+        // Circuitos
+        const { fieldset: circuitosFs, container: circuitosContainer, addButton: addCircuitoBtn } = createSection({
+            legendText: "Fases de escrutinio (solo si Estructurado)",
+            containerClass: "stack",
+            addButton: { text: "+ Añadir fase de escrutinio", ariaLabel: "Añadir fase", className: "btn btn--add" },
         });
+        const circuitosHint = el("div", {
+            textContent: "Indica la duración de cada fase en minutos (número positivo).",
+            className: "hint",
+        });
+        circuitosFs.insertBefore(circuitosHint, circuitosContainer);
+        form.append(circuitosFs);
 
-        // Modalidad de Escrutinio triggers visibility update
-        modalidadSelect.addEventListener('change', updateCircuitosVisibility);
+        // Equipos (Excel)
+        const equiposFileDiv = el("div", { className: "section row" });
+        const equiposFileInput = el("input", { type: "file", accept: ".xlsx, .xls", id: "equiposFile", name: "equiposFile" }) as HTMLInputElement;
+        const equiposFileLabel = el("label", { htmlFor: "equiposFile", textContent: "Cargar archivo de equipos (Excel)" }) as HTMLLabelElement;
+        markOptional(equiposFileDiv, equiposFileInput);
+        equiposFileDiv.append(equiposFileLabel, equiposFileInput);
+        form.append(equiposFileDiv);
 
-        // Attach NumberOfDays handler if field exists
-        if (inputs["NumberOfDays"]) {
-            inputs["NumberOfDays"].addEventListener('input', () => updateDayFieldsAndRestore());
-            updateDayFieldsAndRestore(saved);
-        }
-
-        // Render descansos and circuitos after possible restore
-        renderDescansos();
-        renderCircuitos();
-        updateCircuitosVisibility();
-
-        // Submit button
-        const submit = document.createElement('button');
-        submit.type = "submit";
-        submit.textContent = "Submit";
-        submit.style.marginTop = "2em";
-        form.appendChild(submit);
-
-        // Handle submit
-        form.onsubmit = (ev) => {
-            ev.preventDefault();
-            const config: any = {};
-            for (const field of staticFields) {
-                config[field] = Number((inputs[field] as HTMLInputElement).value);
-            }
-    
-            // Dynamic days
-            const numDays = Number((inputs["NumberOfDays"] as HTMLInputElement).value);
-            for (let i = 1; i <= numDays; i++) {
-                ["Start", "End"].forEach(part => {
-                    const key = `Dia ${i} ${part}`;
-                    config[key] = (inputs[key] as HTMLInputElement)?.value ?? '';
-                });
-            }
-            // Descansos
-            descansos.forEach(d => {
-                if (d.name && d.start && d.end) {
-                    config[`Descanso ${d.name} Start`] = d.start;
-                    config[`Descanso ${d.name} End`] = d.end;
-                }
-            });
-            // Dia de escrutinio
-            config["Dia de Escrutinio"] = (inputs["Dia de Escrutinio"] as HTMLInputElement).value || undefined;
-            // Modalidad de escrutinio
-            config["Modalidad de Escrutinio"] = (inputs["Modalidad de Escrutinio"] as HTMLSelectElement).value;
-            // Circuitos dinámicos only if estructurado
-            if (config["Modalidad de Escrutinio"] === "Estructurado") {
-                circuitos.forEach(c => {
-                    if (c.fase && c.duracion !== '') {
-                        config[`Duración Escrutinio Fase ${c.fase}`] = Number(c.duracion);
-                    }
-                });
-            }
-            form.remove();
-            resolve({config: config as GlobalConfig, teams});
-        };
-        // File input for Equipos Excel
-        const equiposFileDiv = document.createElement('div');
-        equiposFileDiv.style.marginBottom = "1em";
-
-        const equiposFileLabel = document.createElement('label');
-        equiposFileLabel.textContent = "Cargar archivo de equipos (Excel): ";
-        equiposFileLabel.htmlFor = "equiposFile";
-
-        const equiposFileInput = document.createElement('input');
-        equiposFileInput.type = 'file';
-        equiposFileInput.accept = '.xlsx, .xls';
-        equiposFileInput.id = 'equiposFile';
-        equiposFileInput.name = 'equiposFile';
-        equiposFileInput.style.marginLeft = '1em';
-
-        equiposFileDiv.appendChild(equiposFileLabel);
-        equiposFileDiv.appendChild(equiposFileInput);
-        form.appendChild(equiposFileDiv);
-        let teams: Equipo[]
-        equiposFileInput.addEventListener('change', (event) => {
+        equiposFileInput.addEventListener("change", (event) => {
             handleFileInputChange(
                 event,
                 (processed) => {
@@ -471,14 +120,143 @@ export async function createConfigForm(): Promise<{config: GlobalConfig, teams?:
                 },
                 (error) => {
                     console.error(error);
-                    alert('Error al cargar los equipos desde el archivo Excel.');
+                    alert("Error al cargar los equipos desde el archivo Excel.");
                 }
             );
         });
 
+        const submitBtn = el("button", { type: "submit", textContent: "Guardar configuración", className: "btn btn--submit" });
+        form.append(submitBtn);
 
+        // Restore Descansos / Circuitos from cookie
+        const cookieDataKeys = Object.keys(cookieData);
+        const descansoNames = cookieDataKeys
+            .filter((k) => k.startsWith("Descanso ") && k.endsWith(" Start"))
+            .map((k) => k.slice(9, -6).trim());
 
-        document.body.appendChild(form);
-        form.scrollIntoView({ behavior: 'smooth' });
+        descansos = descansoNames.map((name) => ({
+            name,
+            start: cookieData[`Descanso ${name} Start`] || "",
+            end: cookieData[`Descanso ${name} End`] || "",
+        }));
+
+        const circuitoFases = cookieDataKeys
+            .filter((k) => k.startsWith("Duración Escrutinio Fase "))
+            .map((k) => Number(k.replace("Duración Escrutinio Fase ", "")))
+            .filter((n) => !isNaN(n));
+
+        circuitos = circuitoFases.map((fase) => ({
+            fase,
+            duracion:
+                cookieData[`Duración Escrutinio Fase ${fase}`] !== undefined
+                    ? Number(cookieData[`Duración Escrutinio Fase ${fase}`])
+                    : "",
+        }));
+
+        // Rendering + validators holders
+        const descansoValidators: Array<() => boolean> = [];
+        const dayValidators: Array<() => boolean> = [];
+
+        // Events
+        Object.values(inputs).forEach((i) =>
+            i.addEventListener("input", () => saveAllInputsToCookie(inputs, descansos, circuitos))
+        );
+
+        addDescansoBtn!.onclick = () => {
+            descansos.push({ name: "", start: "", end: "" });
+            renderDescansos(descansosContainer, descansoValidators, descansos, inputs, circuitos);
+            saveAllInputsToCookie(inputs, descansos, circuitos);
+        };
+
+        addCircuitoBtn!.onclick = () => {
+            const nextFase = circuitos.length ? Math.max(...circuitos.map((c) => c.fase)) + 1 : 1;
+            circuitos.push({ fase: nextFase, duracion: "" });
+            renderCircuitos(circuitosContainer, descansos, inputs, circuitos);
+            saveAllInputsToCookie(inputs, descansos, circuitos);
+        };
+
+        (inputs["Modalidad de Escrutinio"] as HTMLSelectElement).addEventListener("change", () =>
+            updateCircuitosVisibility(inputs, circuitosFs)
+        );
+
+        // When days are edited, re-render AND re-validate Día de Escrutinio live (so the inline error clears immediately)
+        if (inputs["NumberOfDays"]) {
+            (inputs["NumberOfDays"] as HTMLInputElement).required = true;
+            inputs["NumberOfDays"].addEventListener("input", () => {
+                renderDays(dayValidators, inputs, descansos, circuitos, daysContainer);
+                validateDiaEscrutinioWithinDays({ inputs }); // ⬅️ live re-check
+            });
+            renderDays(dayValidators, inputs, descansos, circuitos, daysContainer, cookieData);
+        }
+
+        // Initial renders
+        renderDescansos(descansosContainer, descansoValidators, descansos, inputs, circuitos);
+        renderCircuitos(circuitosContainer, descansos, inputs, circuitos);
+        updateCircuitosVisibility(inputs, circuitosFs);
+
+        // ⬅️ NEW: Live validation for Día de Escrutinio itself
+        diaEscrutinioInput.addEventListener("input", () => validateDiaEscrutinioWithinDays({ inputs }));
+        diaEscrutinioInput.addEventListener("change", () => validateDiaEscrutinioWithinDays({ inputs }));
+        // Run once on load (in case cookie had an out-of-range date)
+        validateDiaEscrutinioWithinDays({ inputs });
+
+        // Submit
+        form.onsubmit = (ev) => {
+            ev.preventDefault();
+
+            clearErrorSummary(errorSummary);
+
+            const ok = validateForm({
+                inputs,
+                dayValidators,
+                descansoValidators,
+                modalidadSelect: inputs["Modalidad de Escrutinio"] as HTMLSelectElement,
+                circuitos,
+                circuitosContainer,
+                errorSummary: errorSummary as HTMLElement,
+                descansos,
+            });
+
+            if (!ok) return;
+
+            // Build config object
+            const config: Record<string, any> = {};
+
+            for (const field of STATIC_FIELDS) {
+                config[field] = Number((inputs[field] as HTMLInputElement).value);
+            }
+
+            const numDays = Number((inputs["NumberOfDays"] as HTMLInputElement).value);
+            for (let i = 1; i <= numDays; i++) {
+                for (const part of ["Start", "End"] as const) {
+                    const key = `Dia ${i} ${part}`;
+                    config[key] = (inputs[key] as HTMLInputElement)?.value ?? "";
+                }
+            }
+
+            for (const d of descansos) {
+                if (d.name && d.start && d.end) {
+                    config[`Descanso ${d.name} Start`] = d.start;
+                    config[`Descanso ${d.name} End`] = d.end;
+                }
+            }
+
+            config["Dia de Escrutinio"] = (inputs["Dia de Escrutinio"] as HTMLInputElement).value || undefined;
+            config["Modalidad de Escrutinio"] = (inputs["Modalidad de Escrutinio"] as HTMLSelectElement).value;
+
+            if (config["Modalidad de Escrutinio"] === "Estructurado") {
+                for (const c of circuitos) {
+                    if (c.fase && c.duracion !== "") {
+                        config[`Duración Escrutinio Fase ${c.fase}`] = Number(c.duracion);
+                    }
+                }
+            }
+
+            form.remove();
+            resolve({ config: config as GlobalConfig, teams });
+        };
+        const root = getRoot()
+        root.append(form);
+        form.scrollIntoView({ behavior: "smooth" });
     });
 }

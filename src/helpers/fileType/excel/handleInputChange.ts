@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx';  
-import { processExcelData } from './excel';
+import { processExcelData } from './processInput';
 import { Equipo, GlobalConfig } from '../../../types/types';
 
 // Tipos para los datos procesados

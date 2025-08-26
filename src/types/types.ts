@@ -94,7 +94,7 @@ export interface StaticConfig {
   "Duración Carrera Entry": number;
   "Duración Carrera Development": number;
   "Duración Carrera Professional": number;
-  "Duración Cómputo de Puntos": number,
+  "Duración Knockouts - Eliminatorias": number,
   "Nº de carreras a la vez": number;
   "Dia de Escrutinio"?: string,
   "Modalidad de Escrutinio": "Estructurado" | "Desestructurado",
@@ -115,7 +115,49 @@ export type State = {
 }
 
 export type Assignation = {
-    judge: Juez;
-    event: Evento;
-    team: string;
+  judge: Juez;
+  event: Evento;
+  team: string;
 }
+
+export const STATIC_FIELDS: (keyof StaticConfig)[] = [
+  "Nº equipos de Entry",
+  "Nº equipos de Development",
+  "Nº equipos de Professional",
+  "Nº de Jueces para el portfolio técnico",
+  "Nº de Jueces para el portfolio de empresa",
+  "Nº de Jueces para el escrutinio",
+  "Nº de Jueces para la presentación verbal",
+  "Nº de personal para el registro",
+  "Carreras Entry",
+  "Carreras Development",
+  "Carreras Professional",
+  "NumberOfDays",
+  "Duración registro",
+  "Duración Charla/Presentación",
+  "Duración Montaje del Pit Display",
+  "Duración Escrutinio Entry",
+  "Duración Escrutinio Development",
+  "Duración Escrutinio Professional",
+  "Duración Portfolio Técnico Entry",
+  "Duración Portfolio Técnico Development",
+  "Duración Portfolio Técnico Professional",
+  "Duración Portfolio Empresa Entry",
+  "Duración Portfolio Empresa Development",
+  "Duración Portfolio Empresa Professional",
+  "Duración Presentación Verbal Entry",
+  "Duración Presentación Verbal Development",
+  "Duración Presentación Verbal Professional",
+  "Duración Ceremonia de Clausura y Premios",
+  "Duración Carrera Entry",
+  "Duración Carrera Development",
+  "Duración Carrera Professional",
+  "Duración Knockouts - Eliminatorias",
+  "Nº de carreras a la vez",
+];
+
+
+
+export type InputsMap = Record<string, HTMLInputElement | HTMLSelectElement>;
+export type Descanso = { name: string; start: string; end: string };
+export type Circuito = { fase: number; duracion: number | "" };

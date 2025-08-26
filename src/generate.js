@@ -35,7 +35,7 @@ async function generarDummyInput() {
     "Duración Presentación Verbal Development": 20,
     "Duración Presentación Verbal Professional": 20,
     "Duración Ceremonia de Clausura y Premios": 60,
-    "Duración Cómputo de Puntos": 90,
+    "Duración Knockouts - Eliminatorias": 90,
     "Duración Carrera Entry": 10,
     "Duración Carrera Development": 10,
     "Duración Carrera Professional": 10,

@@ -11,7 +11,7 @@ export function processExcelData(configData: any[][], equiposData: any[][]): { c
   for (let i = 1; i < configData.length; i++) {
     const row = configData[i];
     if (!row || row.length < 2) continue;
-
+    
     const key = String(row[0]).trim();
     let value = row[1];
 

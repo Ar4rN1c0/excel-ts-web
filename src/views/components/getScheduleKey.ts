@@ -1,122 +1,145 @@
 import { parseStateFromJSON } from "../../helpers/fileType/json/parseStateFromJSON";
+import { getRoot } from "../../lib/htmlTools";
 import { State } from "../../types/types";
 
-export function selectScheduleSource(keys: string[]): Promise<{ type: "local", key: string } | { type: "upload", state: State }> {
-    return new Promise((resolve) => {
-        // Overlay
-        const overlay = document.createElement("div");
-        overlay.style.position = "fixed";
-        overlay.style.top = "0";
-        overlay.style.left = "0";
-        overlay.style.width = "100vw";
-        overlay.style.height = "100vh";
-        overlay.style.background = "rgba(0,0,0,0.2)";
-        overlay.style.display = "flex";
-        overlay.style.alignItems = "center";
-        overlay.style.justifyContent = "center";
-        overlay.style.zIndex = "9999";
+export function selectScheduleSource(
+  keys: string[]
+): Promise<{ type: "local"; key: string } | { type: "upload"; state: State }> {
+  return new Promise((resolve) => {
+    const root = getRoot();
 
-        // Main container
-        const container = document.createElement("div");
-        container.style.background = "white";
-        container.style.padding = "24px";
-        container.style.borderRadius = "12px";
-        container.style.boxShadow = "0 2px 12px rgba(0,0,0,0.2)";
-        container.style.display = "flex";
-        container.style.flexDirection = "column";
-        container.style.gap = "18px";
-        container.style.minWidth = "320px";
-        container.style.maxWidth = "90vw";
+    // Wrapper keeps the component centered, but stays in normal flow (no absolute/fixed).
+    const wrapper = document.createElement("div");
+    wrapper.className = "schedule-source-wrapper";
 
-        // Title
-        const title = document.createElement("h2");
-        title.textContent = "Load schedule";
-        title.style.marginBottom = "0";
-        title.style.textAlign = "center";
-        container.appendChild(title);
+    // Main container (dialog-like card)
+    const container = document.createElement("div");
+    container.className = "schedule-source";
+    container.setAttribute("role", "dialog");
+    container.setAttribute("aria-labelledby", "schedule-source-title");
 
-        // Option 1: LocalStorage
-        const localDiv = document.createElement("div");
-        localDiv.style.display = "flex";
-        localDiv.style.flexDirection = "column";
-        localDiv.style.alignItems = "center";
-        localDiv.style.gap = "8px";
+    // Title
+    const title = document.createElement("h2");
+    title.id = "schedule-source-title";
+    title.className = "schedule-source__title";
+    title.textContent = "Cargar horario";
+    container.appendChild(title);
 
-        const localLabel = document.createElement("label");
-        localLabel.textContent = "Select from saved schedules:";
-        localLabel.style.fontWeight = "500";
-        localDiv.appendChild(localLabel);
+    // --- Local storage section ---
+    const localSection = document.createElement("section");
+    localSection.className = "schedule-source__section";
 
-        const select = document.createElement("select");
-        for (let key of keys) {
-            const option = document.createElement("option");
-            const shortKey = key.replace(/^Schedule: /, "");
-            option.value = key;
-            option.textContent = shortKey;
-            select.appendChild(option);
+    const localLabel = document.createElement("label");
+    localLabel.className = "schedule-source__label";
+    localLabel.textContent = "Selecciona uno de tus horarios guardados:";
+
+    const localRow = document.createElement("div");
+    localRow.className = "schedule-source__row";
+
+    const select = document.createElement("select");
+    select.className = "schedule-source__select";
+    select.ariaLabel = "Horarios guardados";
+
+    for (const key of keys) {
+      const option = document.createElement("option");
+      const shortKey = key.replace(/^Schedule: /, "");
+      option.value = key;
+      option.textContent = shortKey;
+      select.appendChild(option);
+    }
+
+    const selectBtn = document.createElement("button");
+    selectBtn.type = "button";
+    selectBtn.className = "schedule-source__btn schedule-source__btn--primary";
+    selectBtn.textContent = "Cargar seleccionado";
+    selectBtn.disabled = keys.length === 0;
+    selectBtn.onclick = () => {
+      cleanup();
+      resolve({ type: "local", key: select.value });
+    };
+
+    localRow.appendChild(select);
+    localRow.appendChild(selectBtn);
+
+    const localHelper = document.createElement("p");
+    localHelper.className = "schedule-source__helper";
+    localHelper.textContent =
+      keys.length > 0
+        ? "Elige un horario guardado previamente."
+        : "No se han encontrado horarios guardados.";
+
+    localSection.appendChild(localLabel);
+    localSection.appendChild(localRow);
+    localSection.appendChild(localHelper);
+
+    // --- Separator ---
+    const sep = document.createElement("div");
+    sep.className = "schedule-source__separator";
+    sep.innerHTML = '<span aria-hidden="true">o</span>';
+
+    // --- Upload section ---
+    const uploadSection = document.createElement("section");
+    uploadSection.className = "schedule-source__section";
+
+    const uploadLabel = document.createElement("label");
+    uploadLabel.className = "schedule-source__label";
+    uploadLabel.textContent = "Sube tu archivo de horario (.json):";
+
+    const uploadRow = document.createElement("div");
+    uploadRow.className = "schedule-source__row";
+
+    const fileInput = document.createElement("input");
+    fileInput.type = "file";
+    fileInput.accept = ".json,application/json";
+    fileInput.className = "schedule-source__file";
+    fileInput.ariaLabel = "Archivo JSON de horario";
+
+    const uploadBtn = document.createElement("button");
+    uploadBtn.type = "button";
+    uploadBtn.className = "schedule-source__btn";
+    uploadBtn.textContent = "Cargar archivo subido";
+    uploadBtn.onclick = () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) {
+        window.alert("Selecciona primero un archivo.");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const text = (event.target?.result as string) ?? "";
+          const state = parseStateFromJSON(text);
+          if (!state) throw new Error("Could not extract state from given file");
+          cleanup();
+          resolve({ type: "upload", state });
+        } catch {
+          window.alert("Formato de archivo no válido o archivo dañado.");
         }
-        localDiv.appendChild(select);
+      };
+      reader.readAsText(file);
+    };
 
-        const selectBtn = document.createElement("button");
-        selectBtn.textContent = "Load selected";
-        selectBtn.onclick = () => {
-            document.body.removeChild(overlay);
-            resolve({ type: "local", key: select.value });
-        };
-        localDiv.appendChild(selectBtn);
+    uploadRow.appendChild(fileInput);
+    uploadRow.appendChild(uploadBtn);
 
-        // Separator
-        const sep = document.createElement("div");
-        sep.style.textAlign = "center";
-        sep.style.margin = "12px 0";
-        sep.innerHTML = '<span style="color: #aaa;">or</span>';
+    uploadSection.appendChild(uploadLabel);
+    uploadSection.appendChild(uploadRow);
 
-        // Option 2: Upload JSON
-        const uploadDiv = document.createElement("div");
-        uploadDiv.style.display = "flex";
-        uploadDiv.style.flexDirection = "column";
-        uploadDiv.style.alignItems = "center";
-        uploadDiv.style.gap = "8px";
+    // Assemble
+    container.appendChild(localSection);
+    container.appendChild(sep);
+    container.appendChild(uploadSection);
 
-        const uploadLabel = document.createElement("label");
-        uploadLabel.textContent = "Upload your schedule file (.json):";
-        uploadLabel.style.fontWeight = "500";
-        uploadDiv.appendChild(uploadLabel);
+    wrapper.appendChild(container);
+    root.appendChild(wrapper);
 
-        const fileInput = document.createElement("input");
-        fileInput.type = "file";
-        fileInput.accept = ".json,application/json";
-        uploadDiv.appendChild(fileInput);
+    // Focus the first interactive element for accessibility
+    (keys.length > 0 ? select : fileInput).focus();
 
-        const uploadBtn = document.createElement("button");
-        uploadBtn.textContent = "Load uploaded file";
-        uploadBtn.onclick = () => {
-            const file = fileInput.files && fileInput.files[0];
-            if (!file) {
-                alert("Please choose a file first.");
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                try {
-                    const text = event.target?.result as string;
-                    const state = parseStateFromJSON(text);
-                    document.body.removeChild(overlay);
-                    if(!state) throw new Error("Could not extract state from given file");
-                    resolve({ type: "upload", state });
-                } catch (err) {
-                    alert("Invalid file format or corrupted file.");
-                }
-            };
-            reader.readAsText(file);
-        };
-        uploadDiv.appendChild(uploadBtn);
-
-        // Append everything
-        container.appendChild(localDiv);
-        container.appendChild(sep);
-        container.appendChild(uploadDiv);
-        overlay.appendChild(container);
-        document.body.appendChild(overlay);
-    });
+    function cleanup() {
+      if (wrapper.parentElement === root) {
+        root.removeChild(wrapper);
+      }
+    }
+  });
 }

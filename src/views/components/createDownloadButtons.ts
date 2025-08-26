@@ -1,9 +1,11 @@
-import {  Assignation, Equipo, Juez } from "../../types/types";
-import { generarExcelEquipo, generarExcelJuez, generarExcelMaster } from "../../helpers/fileType/excel/output";
+import { Assignation, Equipo, Juez } from "../../types/types";
 import { createDownloadButton } from "./createDownloadButton";
 import { generateZip } from "../../helpers/fileType/zip/zipUtil";
 import { downloadStateAsJSON } from "../../helpers/fileType/json/downloadStateAsJSON";
 import { generateScheduleTable } from "../main/viewMasterTable";
+import { generarExcelMaster } from "../../helpers/fileType/excel/files/masterExcel";
+import { generarExcelEquipo } from "../../helpers/fileType/excel/files/teamsExcel";
+import { generarExcelJuez } from "../../helpers/fileType/excel/files/judgeExcel";
 
 export function createDownloadButtons(teams: Equipo[], judges: Juez[], assignations: Assignation[]): HTMLElement {
     const section = document.createElement("section");
@@ -20,26 +22,26 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[], assignati
     );
     section.appendChild(masterBtn);
 
-
+    // HTML download button
     const downloadToHTML = createDownloadButton(
         "Descargar Horario en HTML",
         () => {
-            const horario: string = generateScheduleTable(teams)
+            const horario: string = generateScheduleTable(teams);
             const blob = new Blob([horario], {
                 type: "text/html"
-            })
+            });
 
-            const url = URL.createObjectURL(blob)
-            const link = document.createElement("a")
-            link.href = url
-            link.download = "Horario Maestro.html"
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            URL.revokeObjectURL(url)
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "Horario Maestro.html";
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
-    )
-    section.appendChild(downloadToHTML)
+    );
+    section.appendChild(downloadToHTML);
 
     // Team buttons
     teams.forEach(equipo => {
@@ -55,7 +57,6 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[], assignati
     });
 
     // Judge buttons
-
     judges.forEach((juez) => {
         const judgeBtn = createDownloadButton(
             `Descargar Horario Juez ${juez.nombre} en Excel`,
@@ -67,23 +68,44 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[], assignati
         );
         section.appendChild(judgeBtn);
     });
+
     // Save State as JSON button (special styling)
+    const saveStateContainer = document.createElement("div");
+    saveStateContainer.className = "button-with-explanation";
+
     const saveStateBtn = createDownloadButton(
-        "Guardar Estado (JSON)",
+        "Guardar Estado",
         () => downloadStateAsJSON(teams, judges)
     );
     saveStateBtn.classList.add("special-download-btn");
-    section.appendChild(saveStateBtn);
+
+    const saveExplanation = document.createElement("p");
+    saveExplanation.className = "button-explanation";
+    saveExplanation.textContent = "Guarda esta configuración para acceder a ella desde la librería.";
+
+    saveStateContainer.appendChild(saveStateBtn);
+    saveStateContainer.appendChild(saveExplanation);
+    section.appendChild(saveStateContainer);
 
     // ZIP ALL button (special styling)
+    const zipContainer = document.createElement("div");
+    zipContainer.className = "button-with-explanation";
+
     const zipBtn = createDownloadButton(
         "Descargar Todos en ZIP",
         async () => {
-            await generateZip(teams, judges, assignations)
+            await generateZip(teams, judges, assignations);
         }
     );
     zipBtn.classList.add("special-download-btn");
-    section.appendChild(zipBtn);
+
+    const zipExplanation = document.createElement("p");
+    zipExplanation.className = "button-explanation";
+    zipExplanation.textContent = "Descárgate un ZIP con todos los Excel generados.";
+
+    zipContainer.appendChild(zipBtn);
+    zipContainer.appendChild(zipExplanation);
+    section.appendChild(zipContainer);
 
     return section;
 }
