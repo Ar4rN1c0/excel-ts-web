@@ -67,9 +67,9 @@ executable
 │   └── app.ico           # Tray icon
 └── tools/
     └── syncdist.go       # go:generate helper to mirror ../dist → ./_embed/dist
-
----
 ```
+---
+
 ## Tech Stack
 
 - **Frontend:** TypeScript, HTML, CSS (bundled with Vite)
