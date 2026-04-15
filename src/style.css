@@ -418,4 +418,25 @@ button:disabled {
     gap: 1.5em;
     margin: 1.5em 0;
   }
-} 
+}
+
+
+.logo__header__1 {
+  width: 200px;
+  user-select: none;
+}
+
+.logo__header__2 {
+  width: 200px;
+  
+  filter: contrast(2);
+  /* only brightens lighter areas */
+  user-select: none;
+
+}
+
+.logo__header__pic {
+  display: flex;
+  flex-direction: row;
+
+}

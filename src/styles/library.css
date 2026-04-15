@@ -65,7 +65,12 @@
   gap: var(--space);
   align-items: center;
   flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 30px;
 }
+
+
 
 /* Better responsive behavior for row items */
 @media (max-width: 480px) {
@@ -143,9 +148,8 @@
   }
 }
 
-.schedule-source__btn {
+.schedule-source__btn-group {
   appearance: none;
-  border: 1px solid var(--border);
   background: var(--surface);
   border-radius: 8px;
   padding: 12px 20px;
@@ -157,6 +161,10 @@
   min-width: 100px;
   text-align: center;
   box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: 15px
 }
 
 .schedule-source__btn:hover {
@@ -231,4 +239,14 @@
   .schedule-source__btn {
     border-width: 2px;
   }
+}
+
+
+.delete__btn {
+  background-color: red;
+}
+
+
+.delete__btn:hover {
+  background-color: red;
 }

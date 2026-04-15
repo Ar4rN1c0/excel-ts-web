@@ -1,4 +1,5 @@
 import { parseStateFromJSON } from "../../helpers/fileType/json/parseStateFromJSON";
+import { removeFromStorage } from "../../helpers/storage/saveStateToLocalStorage";
 import { getRoot } from "../../lib/htmlTools";
 import { State } from "../../types/types";
 
@@ -7,18 +8,16 @@ export function selectScheduleSource(
 ): Promise<{ type: "local"; key: string } | { type: "upload"; state: State }> {
   return new Promise((resolve) => {
     const root = getRoot();
+    const currentKeys = [...keys];
 
-    // Wrapper keeps the component centered, but stays in normal flow (no absolute/fixed).
     const wrapper = document.createElement("div");
     wrapper.className = "schedule-source-wrapper";
 
-    // Main container (dialog-like card)
     const container = document.createElement("div");
     container.className = "schedule-source";
     container.setAttribute("role", "dialog");
     container.setAttribute("aria-labelledby", "schedule-source-title");
 
-    // Title
     const title = document.createElement("h2");
     title.id = "schedule-source-title";
     title.className = "schedule-source__title";
@@ -38,35 +37,86 @@ export function selectScheduleSource(
 
     const select = document.createElement("select");
     select.className = "schedule-source__select";
-    select.ariaLabel = "Horarios guardados";
+    select.setAttribute("aria-label", "Horarios guardados");
 
-    for (const key of keys) {
-      const option = document.createElement("option");
-      const shortKey = key.replace(/^Schedule: /, "");
-      option.value = key;
-      option.textContent = shortKey;
-      select.appendChild(option);
+    function repopulateOptions() {
+      select.innerHTML = "";
+      for (const key of currentKeys) {
+        const option = document.createElement("option");
+        const shortKey = key.replace(/^Schedule: /, "");
+        option.value = key;
+        option.textContent = shortKey;
+        select.appendChild(option);
+      }
     }
+    repopulateOptions();
+
+    const btns = document.createElement("div");
+    btns.className = "schedule-source__btn-group";
 
     const selectBtn = document.createElement("button");
     selectBtn.type = "button";
     selectBtn.className = "schedule-source__btn schedule-source__btn--primary";
     selectBtn.textContent = "Cargar seleccionado";
-    selectBtn.disabled = keys.length === 0;
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "schedule-source__btn schedule-source__btn--danger";
+    deleteBtn.textContent = "Eliminar seleccionado";
+
+    const localHelper = document.createElement("p");
+    localHelper.className = "schedule-source__helper";
+
+    function updateLocalUI() {
+      const hasItems = currentKeys.length > 0;
+      select.disabled = !hasItems;
+      selectBtn.disabled = !hasItems;
+      deleteBtn.disabled = !hasItems;
+      localHelper.textContent = hasItems
+        ? "Elige un horario guardado previamente."
+        : "No se han encontrado horarios guardados.";
+    }
+    updateLocalUI();
+
     selectBtn.onclick = () => {
+      if (!select.value) return;
       cleanup();
       resolve({ type: "local", key: select.value });
     };
 
-    localRow.appendChild(select);
-    localRow.appendChild(selectBtn);
+    deleteBtn.onclick = () => {
+      const key = select.value;
+      if (!key) return;
 
-    const localHelper = document.createElement("p");
-    localHelper.className = "schedule-source__helper";
-    localHelper.textContent =
-      keys.length > 0
-        ? "Elige un horario guardado previamente."
-        : "No se han encontrado horarios guardados.";
+      const shortKey = key.replace(/^Schedule: /, "");
+      const confirmed = window.confirm(
+        `¿Seguro que quieres eliminar “${shortKey}”? Esta acción no se puede deshacer.`
+      );
+      if (!confirmed) return;
+
+      // Remove from storage
+      removeFromStorage(key);
+
+      // Remove from UI
+      const idx = currentKeys.indexOf(key);
+      if (idx !== -1) currentKeys.splice(idx, 1);
+
+      repopulateOptions();
+      updateLocalUI();
+
+      if (currentKeys.length > 0) {
+        select.focus();
+      } else {
+        fileInput.focus();
+      }
+    };
+
+    btns.appendChild(selectBtn);
+    btns.appendChild(deleteBtn);
+    deleteBtn.className = "delete__btn"
+
+    localRow.appendChild(select);
+    localRow.appendChild(btns);
 
     localSection.appendChild(localLabel);
     localSection.appendChild(localRow);
@@ -92,7 +142,7 @@ export function selectScheduleSource(
     fileInput.type = "file";
     fileInput.accept = ".json,application/json";
     fileInput.className = "schedule-source__file";
-    fileInput.ariaLabel = "Archivo JSON de horario";
+    fileInput.setAttribute("aria-label", "Archivo JSON de horario");
 
     const uploadBtn = document.createElement("button");
     uploadBtn.type = "button";
@@ -109,7 +159,7 @@ export function selectScheduleSource(
         try {
           const text = (event.target?.result as string) ?? "";
           const state = parseStateFromJSON(text);
-          if (!state) throw new Error("Could not extract state from given file");
+          if (!state) throw new Error("No se pudo extraer un horario del archivo seleccionado");
           cleanup();
           resolve({ type: "upload", state });
         } catch {
@@ -133,8 +183,8 @@ export function selectScheduleSource(
     wrapper.appendChild(container);
     root.appendChild(wrapper);
 
-    // Focus the first interactive element for accessibility
-    (keys.length > 0 ? select : fileInput).focus();
+    // Focus the first interactive element
+    (currentKeys.length > 0 ? select : fileInput).focus();
 
     function cleanup() {
       if (wrapper.parentElement === root) {

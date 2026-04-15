@@ -5,10 +5,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: 'index.html',
-        test: 'test.html', 
-        singleDay: 'single-day.html',
         library: "library.html",
-        calculate: "calculate.html"
       }
     }
   }

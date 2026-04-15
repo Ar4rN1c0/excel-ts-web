@@ -3,7 +3,7 @@ import { createDownloadButton } from "./createDownloadButton";
 import { generateZip } from "../../helpers/fileType/zip/zipUtil";
 import { downloadStateAsJSON } from "../../helpers/fileType/json/downloadStateAsJSON";
 import { generateScheduleTable } from "../main/viewMasterTable";
-import { generarExcelMaster } from "../../helpers/fileType/excel/files/masterExcel";
+import { generarExcelMaster, generarExcelMasteTabla } from "../../helpers/fileType/excel/files/masterExcel";
 import { generarExcelEquipo } from "../../helpers/fileType/excel/files/teamsExcel";
 import { generarExcelJuez } from "../../helpers/fileType/excel/files/judgeExcel";
 
@@ -13,7 +13,7 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[], assignati
 
     // Master button
     const masterBtn = createDownloadButton(
-        "Descargar Horario en Excel",
+        "Descargar Horario en Excel (Gantt)",
         () => {
             generarExcelMaster(teams)
                 .then(() => console.log("Excel descargado correctamente."))
@@ -21,6 +21,16 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[], assignati
         }
     );
     section.appendChild(masterBtn);
+
+    const masterBtnTable = createDownloadButton(
+        "Descargar Horario en Excel (tabla)",
+        () => {
+            generarExcelMasteTabla(teams)
+                .then(() => console.log("Excel descargado correctamente"))
+                .catch((error) => console.error("Error al generar el excel: ", error))
+        }
+    )
+    section.appendChild(masterBtnTable);
 
     // HTML download button
     const downloadToHTML = createDownloadButton(
@@ -48,7 +58,7 @@ export function createDownloadButtons(teams: Equipo[], judges: Juez[], assignati
         const teamBtn = createDownloadButton(
             `Descargar Horario ${equipo.nombre} en Excel`,
             () => {
-                generarExcelEquipo(equipo)
+                generarExcelEquipo(equipo, assignations)
                     .then(() => console.log(`Excel para el equipo ${equipo.nombre} descargado correctamente.`))
                     .catch((error) => console.error(`Error al generar el Excel para el equipo ${equipo.nombre}:`, error));
             }

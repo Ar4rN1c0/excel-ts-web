@@ -29,14 +29,6 @@ export interface Juez {
   nombre: `${TipoJuez} ${number}`
 }
 
-export interface Config {
-  windows: Array<{ start: Date; end: Date }>;
-  JUDGES: Record<TipoJuez, number>;
-  REGISTRATION_STAFF: number;
-  QUALIFYING_RACES_PER_TEAM: number;
-  RACE_DURATION_MIN: Record<Categoria, number>;
-  ELIM_TEAMS: number;
-}
 
 export type DurationMap = Record<Categoria, number>;
 
@@ -56,7 +48,11 @@ export type DynamicDescansoFields = {
 };
 
 export type DynamicCircuitFields = {
-  [key in `Duración Escrutinio Fase ${number}`]?: number
+  [key in `Duración Escrutinio ${Categoria}Fase ${number}`]?: number
+}
+
+export type DynamicScrutinyPhaseNumber = {
+  [key in `Número de Fases ${Categoria}`]?: number
 }
 
 
@@ -65,7 +61,6 @@ export interface StaticConfig {
   "Nº equipos de Entry": number;
   "Nº equipos de Development": number;
   "Nº equipos de Professional": number;
-  "Nº de equipos que se clasifican": number;
   "Nº de Jueces para el portfolio técnico": number;
   "Nº de Jueces para el portfolio de empresa": number;
   "Nº de Jueces para el escrutinio": number;
@@ -102,7 +97,7 @@ export interface StaticConfig {
 }
 
 // Tipo final combinando estructura fija y campos dinámicos
-export type GlobalConfig = StaticConfig & DynamicDayFields & DynamicDescansoFields & DynamicCircuitFields;
+export type GlobalConfig = StaticConfig & DynamicDayFields & DynamicDescansoFields & DynamicCircuitFields & DynamicScrutinyPhaseNumber;
 
 export type Priorities = {
   [K in Categoria]?: number;
@@ -161,3 +156,8 @@ export const STATIC_FIELDS: (keyof StaticConfig)[] = [
 export type InputsMap = Record<string, HTMLInputElement | HTMLSelectElement>;
 export type Descanso = { name: string; start: string; end: string };
 export type Circuito = { fase: number; duracion: number | "" };
+
+
+export type DurationsByCategory =
+  Partial<Record<Categoria, number[]>> &
+  Partial<Record<Lowercase<Categoria>, number[]>>;

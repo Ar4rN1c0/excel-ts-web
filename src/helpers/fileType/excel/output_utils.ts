@@ -1,5 +1,4 @@
-import ExcelJS from 'exceljs';
-import { EventoTipo, TipoJuez } from '../../../types/types';
+import { EventoTipo } from '../../../types/types';
 
 
 /* ===================== Helpers ===================== */
@@ -33,22 +32,7 @@ export function formatDayName(date: Date): string {
 
 
 
-// Leyenda para jueces
-export function addJudgeLegend(ws: ExcelJS.Worksheet, startRow: number, colors: Record<TipoJuez, string>) {
-  ws.addRow(['Leyenda:']);
-  ws.getCell(startRow, 1).font = { bold: true };
 
-  Object.entries(colors).forEach(([judgeType, color], index) => {
-    const row = startRow + index + 1;
-    ws.addRow([judgeType, '']);
-    ws.getCell(row, 1).value = judgeType as string;
-    ws.getCell(row, 2).fill = {
-      type: 'pattern',
-      pattern: 'solid',
-      fgColor: { argb: color }
-    };
-  });
-}
 
 // Detección del tipo de actividad para colorear
 export function getActivityType(nombre: string, tipo: EventoTipo): string {

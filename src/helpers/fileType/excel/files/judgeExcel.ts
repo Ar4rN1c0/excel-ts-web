@@ -191,7 +191,7 @@ export async function generarExcelJuez(
   assignations: Assignation[]
 ) {
   const wb = await buildJuezWorkbook(juez, assignations);
-  await downloadWorkbook(wb, `Juez_${juez.tipo}_${juez.id}_Horario.xlsx`);
+  await downloadWorkbook(wb, `Juez_${juez.nombre}_Horario.xlsx`);
 }
 
 /**

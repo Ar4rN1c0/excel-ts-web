@@ -1,13 +1,13 @@
 // generarExcelEquipo.ts (same path/file where your original lived)
 import ExcelJS from "exceljs";
-import { Equipo, Evento } from "../../../../types/types";
+import { Assignation, Equipo, Evento, Juez } from "../../../../types/types";
 import { formatActivityName } from "../output_utils";
 import { downloadWorkbook, formatDateTime, getDurationInMinutes } from "../excelUtils";
 
 /**
  * Build (but do not download) the formatted team workbook.
  */
-export async function buildEquipoWorkbook(equipo: Equipo): Promise<ExcelJS.Workbook> {
+export async function buildEquipoWorkbook(equipo: Equipo, assignations: Assignation[]): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet("Horario", {
     views: [{ state: "frozen", ySplit: 8 }], // congela hasta la cabecera
@@ -38,40 +38,40 @@ export async function buildEquipoWorkbook(equipo: Equipo): Promise<ExcelJS.Workb
   const zebraFill = solidFill("FFF7FAFC");
 
   const headerFont: ExcelJS.Font = {
-      color: { argb: "FFFFFFFF" }, bold: true,
-      name: "",
-      size: 0,
-      family: 0,
-      scheme: "none",
-      charset: 0,
-      italic: false,
-      underline: false,
-      vertAlign: "superscript",
-      strike: false,
-      outline: false
+    color: { argb: "FFFFFFFF" }, bold: true,
+    name: "",
+    size: 0,
+    family: 0,
+    scheme: "none",
+    charset: 0,
+    italic: false,
+    underline: false,
+    vertAlign: "superscript",
+    strike: false,
+    outline: false
   };
   const metaLabelFont: ExcelJS.Font = {
-      bold: true,
-      name: "",
-      size: 0,
-      family: 0,
-      scheme: "none",
-      charset: 0,
-      color: {},
-      italic: false,
-      underline: false,
-      vertAlign: "superscript",
-      strike: false,
-      outline: false
+    bold: true,
+    name: "",
+    size: 0,
+    family: 0,
+    scheme: "none",
+    charset: 0,
+    color: {},
+    italic: false,
+    underline: false,
+    vertAlign: "superscript",
+    strike: false,
+    outline: false
   };
 
   const thin: ExcelJS.Border = {
-      style: "thin",
-      color: {}
+    style: "thin",
+    color: {}
   };
   const borderThin: ExcelJS.Borders = {
-      top: thin, left: thin, bottom: thin, right: thin,
-      diagonal: {}
+    top: thin, left: thin, bottom: thin, right: thin,
+    diagonal: {}
   };
 
   // ===== 1) datos y métricas =====
@@ -85,13 +85,13 @@ export async function buildEquipoWorkbook(equipo: Equipo): Promise<ExcelJS.Workb
   const lastEnd = items[items.length - 1]?.end;
 
   // ===== 2) título y metainfo =====
-  ws.mergeCells("A1:D1");
+  ws.mergeCells("A1:E1");
   const titleCell = ws.getCell("A1");
   titleCell.value = "Horario de Equipo";
   titleCell.font = { bold: true, size: 16 };
   titleCell.alignment = { vertical: "middle", horizontal: "left" };
 
-  ws.mergeCells("A2:D2");
+  ws.mergeCells("A2:E2");
   const nameCell = ws.getCell("A2");
   nameCell.value = equipo.nombre;
   nameCell.font = { size: 12 };
@@ -118,7 +118,7 @@ export async function buildEquipoWorkbook(equipo: Equipo): Promise<ExcelJS.Workb
   });
 
   // Banda separadora (fila 7)
-  ws.mergeCells("A7:D7");
+  ws.mergeCells("A7:E7");
   const sep = ws.getCell("A7");
   sep.value = "";
   sep.fill = metaBandFill;
@@ -126,7 +126,8 @@ export async function buildEquipoWorkbook(equipo: Equipo): Promise<ExcelJS.Workb
   // ===== 3) cabecera de la tabla (fila 8) =====
   const headerRowNumber = 8;
   const headerRow = ws.getRow(headerRowNumber);
-  headerRow.values = ["Actividad", "Duración (min)", "Inicio", "Fin"];
+  //       1            2        3               4        5
+  headerRow.values = ["Actividad", "Juez", "Duración (min)", "Inicio", "Fin"];
   headerRow.eachCell(c => {
     c.font = headerFont;
     c.fill = headerFill;
@@ -138,12 +139,14 @@ export async function buildEquipoWorkbook(equipo: Equipo): Promise<ExcelJS.Workb
   // ===== 4) filas de datos =====
   let r = headerRowNumber + 1;
   items.forEach((ev: Evento, idx: number) => {
+    const juez = findJudgeForEvent(ev, equipo, assignations);
     const row = ws.getRow(r);
     row.values = [
-      formatActivityName(ev.nombre, equipo.nombre),
-      getDurationInMinutes(ev),
-      formatDateTime(ev.start),
-      formatDateTime(ev.end),
+      formatActivityName(ev.nombre, equipo.nombre), // A
+      juez ? juez.nombre : "-",                     // B
+      getDurationInMinutes(ev),                     // C
+      formatDateTime(ev.start),                     // D
+      formatDateTime(ev.end),                       // E
     ];
 
     if (idx % 2 === 0) {
@@ -162,9 +165,10 @@ export async function buildEquipoWorkbook(equipo: Equipo): Promise<ExcelJS.Workb
 
   // ===== 5) fila de total =====
   const totalRow = ws.getRow(r);
-  totalRow.values = ["Total", { formula: `SUM(B${headerRowNumber + 1}:B${r - 1})` }, "", ""];
+  // Duración ahora está en la columna C
+  totalRow.values = ["Total", "", { formula: `SUM(C${headerRowNumber + 1}:C${r - 1})` }, "", ""];
   totalRow.getCell(1).font = { bold: true };
-  totalRow.getCell(2).font = { bold: true };
+  totalRow.getCell(3).font = { bold: true };
   totalRow.eachCell(c => {
     c.border = borderThin;
   });
@@ -175,7 +179,11 @@ export async function buildEquipoWorkbook(equipo: Equipo): Promise<ExcelJS.Workb
   // Afinar algunas columnas
   const actividadCol = ws.getColumn(1);
   actividadCol.width = Math.max(actividadCol.width ?? 20, 32);
-  ws.getColumn(2).alignment = { horizontal: "center", vertical: "middle" };
+
+  ws.getColumn(2).width = Math.max(ws.getColumn(2).width ?? 14, 18); // Juez
+  ws.getColumn(3).alignment = { horizontal: "center", vertical: "middle" }; // Duración
+  ws.getColumn(4).alignment = { horizontal: "left", vertical: "middle" };   // Inicio
+  ws.getColumn(5).alignment = { horizontal: "left", vertical: "middle" };   // Fin
 
   return wb;
 }
@@ -183,9 +191,26 @@ export async function buildEquipoWorkbook(equipo: Equipo): Promise<ExcelJS.Workb
 /**
  * Keeps the original name/behavior: builds the formatted workbook and downloads it.
  */
-export async function generarExcelEquipo(equipo: Equipo) {
-  const wb = await buildEquipoWorkbook(equipo);
+export async function generarExcelEquipo(equipo: Equipo, assignations: Assignation[]) {
+  const wb = await buildEquipoWorkbook(equipo, assignations);
   await downloadWorkbook(wb, `Equipo_${sanitizeFileName(equipo.nombre)}_Horario.xlsx`);
+}
+
+/**
+ * Encuentra el juez asociado a un evento del equipo usando assignations[].
+ * Sin solapes: se busca por nombre de equipo y coincidencia EXACTA de evento.
+ */
+function findJudgeForEvent(ev: Evento, equipo: Equipo, assignations: Assignation[]): Juez | undefined {
+  const list = assignations.filter(a => a.team === equipo.nombre);
+  const exact = list.find(a => sameEvent(ev, a.event));
+  console.log(exact)
+  return exact?.judge;
+}
+
+function sameEvent(a: Evento, b: Evento): boolean {
+  return a.nombre === b.nombre &&
+         a.start.getTime() === b.start.getTime() &&
+         a.end.getTime() === b.end.getTime();
 }
 
 /**
@@ -207,6 +232,8 @@ function autoFitColumns(ws: ExcelJS.Worksheet, min = 10, max = 50): void {
       else if (v instanceof Date) text = v.toLocaleString();
       else if (typeof v === "object" && "richText" in v) {
         text = (v.richText as Array<{ text: string }>).map(p => p.text).join("");
+      } else if (typeof v === "object" && "formula" in v) {
+        text = ""; // fórmulas no aportan longitud útil
       } else {
         text = String(v);
       }

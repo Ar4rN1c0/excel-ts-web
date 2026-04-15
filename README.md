@@ -1,6 +1,6 @@
-# F1 in Schools – Event Scheduler
+# Fundación MadCup - STEM Racing Spain
 
-A complete scheduling system for **multi-day F1 in Schools events**. It generates team schedules, assigns judges, checks conflicts, and produces visual + Excel outputs for organizers. You can run it as a web app during development, or as a packaged desktop tray app.
+A complete scheduling system for **multi-day Fundación MadCup - STEM Racing Spain events**. It generates team schedules, assigns judges, checks conflicts, and produces visual + Excel outputs for organizers. You can run it as a web app during development, or as a packaged desktop tray app.
 
 ---
 
@@ -174,7 +174,11 @@ go run .             # starts local HTTP server + system tray
 4) **Build a binary**
 ```shell
 # Windows example shown above; macOS/Linux work too 
-GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w -H=windowsgui" -o F1Scheduler.exe .
+# From Linux/macOS host → Windows .exe
+CGO_ENABLED=1 \
+GOOS=windows GOARCH=amd64 \
+CC=x86_64-w64-mingw32-gcc \
+go build -ldflags "-s -w -H=windowsgui" -o F1Scheduler.exe
 ```
 When the tray app starts, use the tray menu:
 - **Open App** → `index.html`

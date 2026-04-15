@@ -17,3 +17,12 @@ export const saveStateToStorage = (state: State, name?: string) => {
     }
 
 };
+
+
+export function removeFromStorage(key: string) {
+    try {
+        window.localStorage.removeItem(key);
+    } catch (err) {
+        console.warn(`Could not remove key '${key}' from storage`, err);
+    }
+}
